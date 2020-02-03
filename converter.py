@@ -43,11 +43,10 @@ def validate_text(file_path: str):
 
 
 class TextConverter:
-    sentences = {}
-
     def __init__(self, file_name):
         self.match_count = 0
         self.file_name = file_name
+        self.sentences = {}
 
     def repl_text_to_key(self, match_obj) -> str:
         groups = list(match_obj.groups())
@@ -99,8 +98,6 @@ class FolderConverter:
         return self.remove_quotation_mark_pattern.match(text).groups()[0]
 
     def text_to_key(self):
-        wb = openpyxl.Workbook()
-        wb.remove(wb.active)
         converted_folder = os.path.join(self.folder_directory, self.folder_name + '_key')
         if not os.path.exists(converted_folder):
             os.mkdir(converted_folder)
@@ -113,15 +110,19 @@ class FolderConverter:
 
                 # write text to key converted text file
                 new_path = os.path.join(converted_folder, file_name)
-                with open(new_path, 'w', encoding='utf-8') as w:
+                with open(new_path, 'w', encoding='utf-16') as w:
                     w.write(converted_text)
 
                 # write xlsx content
-                ws = wb.create_sheet(file_name)
+                wb = openpyxl.Workbook()
+                # wb.remove(wb.active)
+                # ws = wb.create_sheet(file_name)
+                ws = wb.active
                 for key, item in text_converter.sentences.items():
                     ws.append([key, self.strip_quotation_mark(item[0]), self.strip_quotation_mark(item[1])])
-        wb.save(self.folder_path + '.xlsx')
-        wb.close()
+                wb.save(os.path.join(converted_folder, file_name_only + '.xlsx'))
+                wb.close()
+                print(f"converted {file_name} to {file_name_only}.xlsx")
 
 
 if __name__ == '__main__':
