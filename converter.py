@@ -98,7 +98,7 @@ class FolderConverter:
         return self.remove_quotation_mark_pattern.match(text).groups()[0]
 
     def text_to_key(self):
-        converted_folder = os.path.join(self.folder_directory, self.folder_name + '_key')
+        converted_folder = os.path.join(self.folder_directory, self.folder_name + '_converted')
         if not os.path.exists(converted_folder):
             os.mkdir(converted_folder)
 
@@ -125,12 +125,38 @@ class FolderConverter:
                 print(f"converted {file_name} to {file_name_only}.xlsx")
 
 
+def combine_xlsx(original_folder, translated_folder):
+    for file_name in os.listdir(translated_folder):
+        if not file_name.endswith('.xlsx'):
+            continue
+        file_name = file_name.replace('kor', '')
+
+        original_path = os.path.join(original_folder, file_name)
+        if not os.path.exists(original_path):
+            continue
+
+        original_wb = openpyxl.open(original_path)
+        original_ws = original_wb.active
+
+        translated_wb = openpyxl.open(os.path.join(translated_folder, file_name))
+        translated_ws = translated_wb.active
+
+        for index, row in enumerate(translated_ws.iter_rows(), 1):
+            original_ws.cell(row=index, column=4).value = row[2].value
+
+        original_wb.save(original_path)
+        original_wb.close()
+
+
 if __name__ == '__main__':
     if len(sys.argv) == 1 or sys.argv[1] == 'help':
         print("""
         available commands :
             text_to_key <folder_path>
+            combine_xlsx <original_folder> <translated_folder>
         """)
     elif sys.argv[1] == 'text_to_key':
         converter = FolderConverter(sys.argv[2])
         converter.text_to_key()
+    elif sys.argv[1] == 'combine_xlsx':
+        combine_xlsx(sys.argv[2], sys.argv[3])
