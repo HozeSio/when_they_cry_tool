@@ -47,38 +47,62 @@ class TextConverter:
         self.match_count = 0
         self.file_name = file_name
         self.sentences = {}
+        self.last_actor = None
+        self.actor_pattern = re.compile(r'"<color=.*>(.*)</color>"')
+        self.remove_quotation_mark_pattern = re.compile(r'"(.*)"')
+
+    def strip_quotation_mark(self, text: str):
+        m = self.remove_quotation_mark_pattern.match(text)
+        if not m:
+            print(text)
+            raise Exception
+        return m.groups()[0]
 
     def repl_text_to_key(self, match_obj) -> str:
         groups = list(match_obj.groups())
+
         count = str(self.match_count * 10).zfill(6)
         key = f"{self.file_name}_{count}"
+        param1 = groups[1]
+        param2 = groups[3]
+        param3 = groups[5]
+        param4 = groups[7]
+        param5 = groups[9]
+
+        if param1 != 'NULL':  # actor setting
+            self.last_actor = self.actor_pattern.match(param3).groups()[0]
+            return match_obj.group()
+
+        if param2.startswith('\"<size=') or param4.startswith('\"<size='):
+            return match_obj.group()
+
         # store sentence
-        self.sentences[key] = (groups[1], groups[3])
+        self.sentences[key] = (self.last_actor, self.strip_quotation_mark(param2), self.strip_quotation_mark(param4))
+        self.last_actor = None
 
         # replace text to key
-        groups[1] = key
         groups[3] = key
+        groups[7] = key
         self.match_count += 1
         return "".join(groups)
 
     def text_to_key(self, text):
         replace_pattern = re.compile(r"""
-        ^
-        (                       # method front part /1
+        (                       # method front part [0]
         \s*OutputLine
         \s*\(
-        \s*NULL\s*,\s*
+        \s*
         )
-        (".*")                  # first text part /2
-        (                       # part between first text and second text /3
-        \s*,\s*NULL\s*,\s*
-        )
-        (".*")                  # second text part /4
-        (                       # part between second text and show option /5
-        \s*,\s*
-        )
-        (.*)                    # show option /6
-        (                       # last part /7
+        ([^,]*)                    # first parameter (actor) [1]
+        (\s*,\s*)              # comma [2]
+        (.*)                  # second parameter (text) [3]
+        ([ \t\x0B\f\r]*,\n?[ \t\x0B\f\r]*) # comma [4]
+        ([^,\n]*)                    # third parameter (actor-alt) [5]
+        (\s*,\s*)               # comma [6]
+        (.*)                  # fourth parameter (text-alt) [7]
+        (\s*,\s*)               # comma [8]
+        (.*)                    # fifth parameter (show option) [9]
+        (                       # last part [10]
         \s*\)
         \s*;
         )
@@ -91,11 +115,6 @@ class FolderConverter:
     def __init__(self, folder_path):
         self.folder_path = folder_path
         (self.folder_directory, self.folder_name) = os.path.split(folder_path)
-
-        self.remove_quotation_mark_pattern = re.compile(r'"(.*)"')
-
-    def strip_quotation_mark(self, text: str):
-        return self.remove_quotation_mark_pattern.match(text).groups()[0]
 
     def text_to_key(self):
         converted_folder = os.path.join(self.folder_directory, self.folder_name + '_converted')
@@ -119,7 +138,7 @@ class FolderConverter:
                 # ws = wb.create_sheet(file_name)
                 ws = wb.active
                 for key, item in text_converter.sentences.items():
-                    ws.append([key, self.strip_quotation_mark(item[0]), self.strip_quotation_mark(item[1])])
+                    ws.append([key, item[0], item[1], item[2]])
                 wb.save(os.path.join(converted_folder, file_name_only + '.xlsx'))
                 wb.close()
                 print(f"converted {file_name} to {file_name_only}.xlsx")
@@ -148,15 +167,44 @@ def combine_xlsx(original_folder, translated_folder):
         original_wb.close()
 
 
+def insert_actor_column(old_folder, actor_folder):
+    for file_name in os.listdir(old_folder):
+        if not file_name.endswith('.xlsx'):
+            continue
+
+        old_path = os.path.join(old_folder, file_name)
+        old_wb = openpyxl.open(old_path)
+        old_ws = old_wb.active
+
+        actor_wb = openpyxl.open(os.path.join(actor_folder, file_name))
+        actor_ws = actor_wb.active
+
+        for index, row in enumerate(actor_ws.iter_rows(), 1):
+            if old_ws.cell(row=index, column=2).value != row[2].value:
+                print(f"{file_name} has different row at {index} {old_ws.cell(row=index, column=2).value} != {row[2].value}")
+                break
+
+        old_ws.insert_cols(2)
+
+        for index, row in enumerate(actor_ws.iter_rows(), 1):
+            old_ws.cell(row=index, column=2).value = row[1].value
+
+        old_wb.save(old_path)
+        old_wb.close()
+
+
 if __name__ == '__main__':
     if len(sys.argv) == 1 or sys.argv[1] == 'help':
         print("""
         available commands :
             text_to_key <folder_path>
             combine_xlsx <original_folder> <translated_folder>
+            insert_actor_column <old_folder> <actor_folder>
         """)
     elif sys.argv[1] == 'text_to_key':
         converter = FolderConverter(sys.argv[2])
         converter.text_to_key()
     elif sys.argv[1] == 'combine_xlsx':
         combine_xlsx(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == 'insert_actor_column':
+        insert_actor_column(sys.argv[2], sys.argv[3])
