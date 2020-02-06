@@ -120,16 +120,26 @@ class FolderConverter:
         converted_folder = os.path.join(self.folder_directory, self.folder_name + '_converted')
         if not os.path.exists(converted_folder):
             os.mkdir(converted_folder)
+        text_folder = os.path.join(converted_folder, 'txt')
+        if not os.path.exists(text_folder):
+            os.mkdir(text_folder)
+        xlsx_folder = os.path.join(converted_folder, 'xlsx')
+        if not os.path.exists(xlsx_folder):
+            os.mkdir(xlsx_folder)
 
         for file_name in os.listdir(self.folder_path):
+            if not file_name.endswith('.txt'):
+                continue
+
             with open(os.path.join(self.folder_path, file_name), 'r', encoding='utf-8') as f:
                 file_name_only = os.path.splitext(file_name)[0]
+                print(f"start converting {file_name}....", end='')
                 text_converter = TextConverter(file_name_only)
                 converted_text = text_converter.text_to_key(f.read())
 
                 # write text to key converted text file
-                new_path = os.path.join(converted_folder, file_name)
-                with open(new_path, 'w', encoding='utf-16') as w:
+                new_path = os.path.join(text_folder, file_name)
+                with open(new_path, 'w', encoding='utf-8') as w:
                     w.write(converted_text)
 
                 # write xlsx content
@@ -139,9 +149,9 @@ class FolderConverter:
                 ws = wb.active
                 for key, item in text_converter.sentences.items():
                     ws.append([key, item[0], item[1], item[2]])
-                wb.save(os.path.join(converted_folder, file_name_only + '.xlsx'))
+                wb.save(os.path.join(xlsx_folder, file_name_only + '.xlsx'))
                 wb.close()
-                print(f"converted {file_name} to {file_name_only}.xlsx")
+                print(f"now converted to {file_name_only}.xlsx")
 
 
 def combine_xlsx(original_folder, translated_folder):
