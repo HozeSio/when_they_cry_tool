@@ -3,6 +3,7 @@ import sys
 import os
 import re
 import openpyxl
+import translation_extractor
 
 
 def validate_text(file_path: str):
@@ -214,6 +215,9 @@ if __name__ == '__main__':
     elif sys.argv[1] == 'text_to_key':
         converter = FolderConverter(sys.argv[2])
         converter.text_to_key()
+    elif sys.argv[1] == 'extract_text':
+        extractor = translation_extractor.TextExtractor()
+        extractor.extract_text(sys.argv[2])
     elif sys.argv[1] == 'combine_xlsx':
         combine_xlsx(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == 'insert_actor_column':
