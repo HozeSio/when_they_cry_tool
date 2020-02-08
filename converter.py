@@ -5,42 +5,55 @@ import re
 import openpyxl
 import translation_extractor
 
+method_pattern = re.compile(r"""
+(                       # method front part [0]
+\s*OutputLine
+\s*\(
+\s*
+)
+([^,]*)                    # first parameter (actor) [1]
+(\s*,\s*)              # comma [2]
+(.*)                  # second parameter (text) [3]
+([ \t\x0B\f\r]*,\n?[ \t\x0B\f\r]*) # comma [4]
+([^,\n]*)                    # third parameter (actor-alt) [5]
+(\s*,\s*)               # comma [6]
+(.*)                  # fourth parameter (text-alt) [7]
+(\s*,\s*)               # comma [8]
+(.*)                    # fifth parameter (show option) [9]
+(                       # last part [10]
+\s*\)
+\s*;
+)
+""", re.VERBOSE | re.MULTILINE)
 
-def validate_text(file_path: str):
-    with open(file_path, 'r', encoding='utf-8') as f:
-        method_pattern = re.compile(r"""
-        ^
-        \s*OutputLine       # function name
-        \s*\(
-        \s*(.*\n.*)         # parameters
-        \s*\)
-        \s*;
-        """, re.VERBOSE | re.MULTILINE)
 
-        text_parameter_validate_pattern = re.compile(r"""
-        \s*NULL
-        \s*,     
-        \s*
-        (".*")          # first text parameter (japanese)
-        \s*,
-        \s*NULL
-        \s*,
-        \s*
-        (".*")          # second text parameter (english)
-        \s*,
-        \s*
-        (.*)            # text output parameter
-        """, re.VERBOSE | re.DOTALL)
+def validate_folder(folder_path: str):
+    result = True
+    for file_name in os.listdir(folder_path):
+        if not file_name.endswith('.txt'):
+            continue
 
-        text = f.read()
-        for index, method_match in enumerate(method_pattern.finditer(text)):
-            method_parameters = method_match.groups()[0]
+        print(f"validating {file_name}")
+        file_path = os.path.join(folder_path, file_name)
+        with open(file_path, 'r', encoding='utf-8') as f:
+            result &= validate_text(f.read())
 
-            validate_match = text_parameter_validate_pattern.sub(method_parameters)
-            if validate_match is None:
+    if not result:
+        exit(-1)
+
+
+def validate_text(text: str):
+    for method_match in method_pattern.finditer(text):
+        groups = method_match.groups()
+        # output text
+        if groups[1] == 'NULL':
+            if not groups[3].startswith('\"') or not groups[3].endswith('\"') or not groups[7].startswith('\"') or not groups[7].endswith('\"'):
                 print(method_match.group(), file=sys.stderr)
-            else:
-                (first_text, second_text, option) = validate_match.groups
+                return False
+        # set actor
+        else:
+            pass
+    return True
 
 
 class TextConverter:
@@ -88,28 +101,7 @@ class TextConverter:
         return "".join(groups)
 
     def text_to_key(self, text):
-        replace_pattern = re.compile(r"""
-        (                       # method front part [0]
-        \s*OutputLine
-        \s*\(
-        \s*
-        )
-        ([^,]*)                    # first parameter (actor) [1]
-        (\s*,\s*)              # comma [2]
-        (.*)                  # second parameter (text) [3]
-        ([ \t\x0B\f\r]*,\n?[ \t\x0B\f\r]*) # comma [4]
-        ([^,\n]*)                    # third parameter (actor-alt) [5]
-        (\s*,\s*)               # comma [6]
-        (.*)                  # fourth parameter (text-alt) [7]
-        (\s*,\s*)               # comma [8]
-        (.*)                    # fifth parameter (show option) [9]
-        (                       # last part [10]
-        \s*\)
-        \s*;
-        )
-        """, re.VERBOSE | re.MULTILINE)
-
-        return replace_pattern.sub(self.repl_text_to_key, text)
+        return method_pattern.sub(self.repl_text_to_key, text)
 
 
 class FolderConverter:
@@ -132,11 +124,15 @@ class FolderConverter:
             if not file_name.endswith('.txt'):
                 continue
 
-            with open(os.path.join(self.folder_path, file_name), 'r', encoding='utf-8') as f:
-                file_name_only = os.path.splitext(file_name)[0]
+            file_path = os.path.join(self.folder_path, file_name)
+            with open(file_path, 'r', encoding='utf-8') as f:
                 print(f"start converting {file_name}....", end='')
+                text = f.read()
+                if not validate_text(text):
+                    exit(-1)
+                file_name_only = os.path.splitext(file_name)[0]
                 text_converter = TextConverter(file_name_only)
-                converted_text = text_converter.text_to_key(f.read())
+                converted_text = text_converter.text_to_key(text)
 
                 # write text to key converted text file
                 new_path = os.path.join(text_folder, file_name)
@@ -148,8 +144,9 @@ class FolderConverter:
                 # wb.remove(wb.active)
                 # ws = wb.create_sheet(file_name)
                 ws = wb.active
+                ws.append(['actor', 'japanese', 'english', 'translation'])
                 for key, item in text_converter.sentences.items():
-                    ws.append([key, item[0], item[1], item[2]])
+                    ws.append([item[0], item[1], item[2]])
                 wb.save(os.path.join(xlsx_folder, file_name_only + '.xlsx'))
                 wb.close()
                 print(f"now converted to {file_name_only}.xlsx")
@@ -206,15 +203,23 @@ def insert_actor_column(old_folder, actor_folder):
 
 if __name__ == '__main__':
     if len(sys.argv) == 1 or sys.argv[1] == 'help':
-        print("""
-        available commands :
-            text_to_key <folder_path>
-            combine_xlsx <original_folder> <translated_folder>
-            insert_actor_column <old_folder> <actor_folder>
-        """)
-    elif sys.argv[1] == 'text_to_key':
+        print(
+"""
+usage: converter.py [commands]
+available commands:
+    export_text <Update folder>
+    -  export text parameter to xlsx file from the 
+    extract_text <file_path>
+    - extract text line from the onscript file and export to xlsx
+    combine_xlsx <original_folder> <translated_folder>
+    insert_actor_column <old_folder> <actor_folder>
+"""
+        )
+    elif sys.argv[1] == 'export_text':
         converter = FolderConverter(sys.argv[2])
         converter.text_to_key()
+    elif sys.argv[1] == 'validate_folder':
+        validate_folder(sys.argv[2])
     elif sys.argv[1] == 'extract_text':
         extractor = translation_extractor.TextExtractor()
         extractor.extract_text(sys.argv[2])
@@ -222,3 +227,6 @@ if __name__ == '__main__':
         combine_xlsx(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == 'insert_actor_column':
         insert_actor_column(sys.argv[2], sys.argv[3])
+    else:
+        print("invalid command", file=sys.stderr)
+        exit(-1)
