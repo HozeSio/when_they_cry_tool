@@ -110,6 +110,7 @@ class TextConverter:
                 continue
 
             sentences.append((last_actor, self.strip_quotation_mark(line.param2), self.strip_quotation_mark(line.param4)))
+            last_actor = None
         return sentences
 
     def repl_replace_text(self, match_obj) -> str:
