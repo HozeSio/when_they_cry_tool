@@ -91,8 +91,8 @@ class FolderConverter:
                 raise ModuleNotFoundError
 
             with open(script_path, 'r', encoding='utf-8') as f:
-                text_converter = text_converter()
-                replaced_text = text_converter.replace_text(f.read(), translation)
+                text_converter = TextConverter(f.read())
+                replaced_text = text_converter.replace_text(translation)
                 with open(os.path.join(replaced_folder, script_file_name), 'w', encoding='utf-8') as o:
                     o.write(replaced_text)
 
