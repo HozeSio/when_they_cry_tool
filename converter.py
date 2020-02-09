@@ -1,30 +1,8 @@
 #!/usr/bin/env python3
 import sys
-import os
-import re
-import openpyxl
 import translation_extractor
-
-method_pattern = re.compile(r"""
-(                       # method front part [0]
-\s*OutputLine
-\s*\(
-\s*
-)
-([^,]*)                    # first parameter (actor) [1]
-(\s*,\s*)              # comma [2]
-(.*)                  # second parameter (text) [3]
-([ \t\x0B\f\r]*,\n?[ \t\x0B\f\r]*) # comma [4]
-([^,\n]*)                    # third parameter (actor-alt) [5]
-(\s*,\s*)               # comma [6]
-(.*)                  # fourth parameter (text-alt) [7]
-(\s*,\s*)               # comma [8]
-(.*)                    # fifth parameter (show option) [9]
-(                       # last part [10]
-\s*\)
-\s*;
-)
-""", re.VERBOSE | re.MULTILINE)
+from text_converter import *
+from folder_converter import *
 
 
 def validate_folder(folder_path: str):
@@ -36,166 +14,14 @@ def validate_folder(folder_path: str):
         print(f"validating {file_name}")
         file_path = os.path.join(folder_path, file_name)
         with open(file_path, 'r', encoding='utf-8') as f:
-            result &= validate_text(f.read())
+            text_converter = TextConverter(f.read())
+            result &= text_converter.validate_text()
 
     if not result:
         exit(-1)
 
 
-def validate_text(text: str):
-    for method_match in method_pattern.finditer(text):
-        groups = method_match.groups()
-        # output text
-        if groups[1] == 'NULL':
-            if not groups[3].startswith('\"') or not groups[3].endswith('\"') or not groups[7].startswith('\"') or not groups[7].endswith('\"'):
-                print(method_match.group(), file=sys.stderr)
-                return False
-        # set actor
-        else:
-            pass
-    return True
-
-
-class TextConverter:
-    def __init__(self):
-        self.match_count = 0
-        self.sentences = []
-        self.last_actor = None
-        self.actor_pattern = re.compile(r'"<color=.*>(.*)</color>"')
-        self.remove_quotation_mark_pattern = re.compile(r'"(.*)"')
-        self.translation = {}
-
-    def strip_quotation_mark(self, text: str):
-        m = self.remove_quotation_mark_pattern.match(text)
-        if not m:
-            print(text)
-            raise Exception
-        return m.groups()[0]
-
-    def extract_from_match(self, match_obj):
-        groups = match_obj.groups()
-        param1 = groups[1]
-        param2 = groups[3]
-        param3 = groups[5]
-        param4 = groups[7]
-        param5 = groups[9]
-
-        if param1 != 'NULL':  # actor setting
-            self.last_actor = self.actor_pattern.match(param3).groups()[0]
-            return
-
-        if param2.startswith('\"<size=') or param4.startswith('\"<size='):
-            return
-
-        # store sentence
-        self.sentences.append((self.last_actor, self.strip_quotation_mark(param2), self.strip_quotation_mark(param4)))
-        self.last_actor = None
-        self.match_count += 1
-
-    def extract_text(self, text):
-        for match in method_pattern.finditer(text):
-            self.extract_from_match(match)
-
-    def repl_replace_text(self, match_obj) -> str:
-        groups = list(match_obj.groups())
-        param1 = groups[1]
-        param2 = groups[3]
-        param3 = groups[5]
-        param4 = groups[7]
-        param5 = groups[9]
-
-        if param1 != 'NULL':  # actor setting
-            self.last_actor = self.actor_pattern.match(param3).groups()[0]
-            return match_obj.group()
-
-        if param2.startswith('\"<size=') or param4.startswith('\"<size='):
-            return match_obj.group()
-
-        # replace english text to translation text based on japanese text
-        try:
-            key = self.strip_quotation_mark(param2)
-            # empty text handling
-            if not key:
-                key = None
-            translated_text = self.translation[key]
-        except KeyError:
-            print(match_obj.groups())
-            raise
-        groups[7] = f'\"{translated_text}\"'
-        return "".join(groups)
-
-    def replace_text(self, text, translation: {}):
-        self.translation = translation
-        return method_pattern.sub(self.repl_replace_text, text)
-
-
-class FolderConverter:
-    def __init__(self, folder_path):
-        self.folder_path = os.path.normpath(folder_path)
-        (self.folder_directory, self.folder_name) = os.path.split(self.folder_path)
-
-    def export_text(self):
-        converted_folder = os.path.join(self.folder_directory, self.folder_name + '_converted')
-        if not os.path.exists(converted_folder):
-            os.mkdir(converted_folder)
-
-        for file_name in os.listdir(self.folder_path):
-            if not file_name.endswith('.txt'):
-                continue
-
-            file_path = os.path.join(self.folder_path, file_name)
-            with open(file_path, 'r', encoding='utf-8') as f:
-                print(f"start converting {file_name}....", end='')
-                text = f.read()
-                if not validate_text(text):
-                    exit(-1)
-                file_name_only = os.path.splitext(file_name)[0]
-                text_converter = TextConverter()
-                text_converter.extract_text(text)
-
-                # write xlsx content
-                wb = openpyxl.Workbook()
-                # wb.remove(wb.active)
-                # ws = wb.create_sheet(file_name)
-                ws = wb.active
-                ws.append(['actor', 'japanese', 'english', 'translation'])
-                for sentence in text_converter.sentences:
-                    ws.append(sentence)
-                wb.save(os.path.join(converted_folder, file_name_only + '.xlsx'))
-                wb.close()
-                print(f"now converted to {file_name_only}.xlsx")
-
-    def replace_text(self, translation_folder):
-        replaced_folder = os.path.join(self.folder_directory, self.folder_name + '_replaced')
-        if not os.path.exists(replaced_folder):
-            os.mkdir(replaced_folder)
-
-        translation_folder = os.path.normpath(translation_folder)
-        for file_name in os.listdir(translation_folder):
-            file_name_only = os.path.splitext(file_name)[0]
-            script_file_name = f'{file_name_only}.txt'
-            script_path = os.path.join(self.folder_path, script_file_name)
-            if not file_name.endswith('.xlsx') or not os.path.exists(script_path):
-                continue
-            print(f'start replacing {file_name_only}....', end='')
-
-            file_path = os.path.join(translation_folder, file_name)
-            wb = openpyxl.open(file_path)
-            ws = wb.active
-            translation = {}
-            for row in ws.rows:
-                translation[row[2].value] = row[4].value
-            wb.close()
-
-            with open(script_path, 'r', encoding='utf-8') as f:
-                text_converter = TextConverter()
-                replaced_text = text_converter.replace_text(f.read(), translation)
-                with open(os.path.join(replaced_folder, script_file_name), 'w', encoding='utf-8') as o:
-                    o.write(replaced_text)
-
-            print('finished')
-
-
+# deprecated
 def combine_xlsx(original_folder, translated_folder):
     for file_name in os.listdir(translated_folder):
         if not file_name.endswith('.xlsx'):
@@ -219,6 +45,7 @@ def combine_xlsx(original_folder, translated_folder):
         original_wb.close()
 
 
+# deprecated
 def insert_actor_column(old_folder, actor_folder):
     for file_name in os.listdir(old_folder):
         if not file_name.endswith('.xlsx'):
