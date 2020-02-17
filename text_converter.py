@@ -1,7 +1,7 @@
 import sys
 import re
 
-method_pattern = re.compile(r"""
+output_pattern = re.compile(r"""
 (                       # method front part [0]
 \s*OutputLine
 \s*\(
@@ -20,6 +20,24 @@ method_pattern = re.compile(r"""
 \s*\)
 \s*;
 )
+""", re.VERBOSE | re.MULTILINE)
+
+script_method = 'ModCallScriptSection'
+script_pattern = re.compile(rf"""
+{script_method}
+\(
+"(.*)"
+,
+"(.*)"
+\);
+""", re.VERBOSE | re.MULTILINE)
+
+dialog_pattern = re.compile(r'void\ dialog\d+\s*\(\)', re.VERBOSE | re.MULTILINE)
+
+parse_pattern = re.compile(rf"""(?:
+{output_pattern.pattern}|
+{script_pattern.pattern}|
+{dialog_pattern.pattern})
 """, re.VERBOSE | re.MULTILINE)
 
 actor_pattern = re.compile(r'"<color=.*>(.*)</color>"')
@@ -100,17 +118,22 @@ class TextConverter:
     def extract_text(self):
         sentences = []
         last_actor = None
-        for match in method_pattern.finditer(self.text):
-            line = OutputLine(match)
+        for match in parse_pattern.finditer(self.text):
+            if match.group().startswith(script_method):
+                sentences.append((script_method, match.group(12), match.group(13)))
+            elif match.group().startswith('void'):
+                sentences.append((match.group(),))
+            else:
+                line = OutputLine(match)
 
-            if line.is_actor_line():
-                last_actor = line.get_actor()
-                continue
-            if line.is_ignore_line():
-                continue
+                if line.is_actor_line():
+                    last_actor = line.get_actor()
+                    continue
+                if line.is_ignore_line():
+                    continue
 
-            sentences.append((last_actor, self.strip_quotation_mark(line.param2), self.strip_quotation_mark(line.param4)))
-            last_actor = None
+                sentences.append((last_actor, self.strip_quotation_mark(line.param2), self.strip_quotation_mark(line.param4)))
+                last_actor = None
         return sentences
 
     def repl_replace_text(self, match_obj) -> str:
@@ -134,10 +157,10 @@ class TextConverter:
 
     def replace_text(self, translation: {}):
         self.translation = translation
-        return method_pattern.sub(self.repl_replace_text, self.text)
+        return output_pattern.sub(self.repl_replace_text, self.text)
 
     def validate_text(self):
-        for method_match in method_pattern.finditer(self.text):
+        for method_match in output_pattern.finditer(self.text):
             line = OutputLine(method_match)
             if not line.is_actor_line():
                 try:

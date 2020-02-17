@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-import sys
 import translation_extractor
-from text_converter import *
 from folder_converter import *
 
 
@@ -75,7 +73,7 @@ def insert_actor_column(old_folder, actor_folder):
 if __name__ == '__main__':
     if len(sys.argv) == 1 or sys.argv[1] == 'help':
         print(
-"""
+"""\
 usage: converter.py [commands]
 available commands:
     export_text <Update folder>
