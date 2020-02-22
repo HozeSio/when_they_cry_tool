@@ -9,7 +9,6 @@ class FolderConverter:
         self.folder_path = os.path.normpath(folder_path)
         (self.folder_directory, self.folder_name) = os.path.split(self.folder_path)
 
-    # deprecated
     def save_xlsx(self, sentences, path):
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -18,13 +17,19 @@ class FolderConverter:
         wb.save(path)
         wb.close()
 
-    # deprecated
-    def load_xlsx(self, path):
-        wb = openpyxl.open(path)
+    def load_xlsx(self, path, key_col, value_col, prefix):
+        wb = openpyxl.load_workbook(path)
         ws = wb.active
         translation = {}
-        for row in ws.rows:
-            translation[row[2].value] = row[4].value
+        for index, row in enumerate(ws.rows):
+            if prefix:
+                key = f"{index}_{str(row[key_col].value)}"
+            else:
+                key = str(row[key_col].value)
+
+            if key != 'None' and key in translation:
+                print(f'key duplication {key}')
+            translation[key] = str(row[value_col].value)
         wb.close()
         return translation
 
@@ -42,8 +47,8 @@ class FolderConverter:
                 translation[row[1]] = row[3]
         return translation
 
-    def export_text(self):
-        converted_folder = os.path.join(self.folder_directory, self.folder_name + '_tsv')
+    def export_text(self, format):
+        converted_folder = os.path.join(self.folder_directory, self.folder_name + '_output')
         if not os.path.exists(converted_folder):
             os.mkdir(converted_folder)
 
@@ -56,20 +61,23 @@ class FolderConverter:
                 print(f"start converting {file_name}....", end='')
                 text_converter = TextConverter(f.read())
                 if not text_converter.validate_text():
-                    exit(-1)
+                    sys.exit(-1)
                 sentences = text_converter.extract_text()
 
                 file_name_only = os.path.splitext(file_name)[0]
-                # write xlsx file
-                # self.save_xlsx(sentences, os.path.join(converted_folder, file_name_only + '.xlsx'))
-                # write tsv file
-                self.save_tsv(sentences, os.path.join(converted_folder, f'{file_name_only}.tsv'))
+                if format == 'xlsx':
+                    self.save_xlsx(sentences, os.path.join(converted_folder, f'{file_name_only}.xlsx'))
+                elif format == 'tsv':
+                    self.save_tsv(sentences, os.path.join(converted_folder, f'{file_name_only}.tsv'))
                 print(f"finished")
 
-    def replace_text(self, translation_folder):
+    def replace_text(self, translation_folder, actor_path):
         replaced_folder = os.path.join(self.folder_directory, self.folder_name + '_replaced')
         if not os.path.exists(replaced_folder):
             os.mkdir(replaced_folder)
+
+        translation_base = self.load_xlsx(actor_path, 1, 2, False)
+        translation_base[None] = ''
 
         translation_folder = os.path.normpath(translation_folder)
         for file_name in os.listdir(translation_folder):
@@ -79,20 +87,23 @@ class FolderConverter:
             if not os.path.exists(script_path):
                 continue
             print(f'start replacing {script_file_name}....', end='')
+            translation = dict(translation_base)
 
             file_path = os.path.join(translation_folder, file_name)
             # new file format .tsv (actor, japanese, english, translation) and has header
             if ext == '.tsv':
-                translation = self.load_tsv(file_path)
+                translation.update(self.load_tsv(file_path))
             # old file format .xlsx is (key, actor, japanese, english, translation)
             elif ext == '.xlsx':
-                translation = self.load_xlsx(file_path)
+                translation.update(self.load_xlsx(file_path, 1, 3, True))
             else:
                 raise ModuleNotFoundError
 
             with open(script_path, 'r', encoding='utf-8') as f:
                 text_converter = TextConverter(f.read())
                 replaced_text = text_converter.replace_text(translation)
+                if not TextConverter(replaced_text).validate_text():
+                    sys.exit(-1)
                 with open(os.path.join(replaced_folder, script_file_name), 'w', encoding='utf-8') as o:
                     o.write(replaced_text)
 

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import translation_extractor
 from folder_converter import *
+import text_converter
+import openpyxl
 
 
 def validate_folder(folder_path: str):
@@ -16,7 +18,10 @@ def validate_folder(folder_path: str):
             result &= text_converter.validate_text()
 
     if not result:
-        exit(-1)
+        print('validation error!!!')
+        sys.exit(-1)
+    else:
+        print('validation success.')
 
 
 # deprecated
@@ -30,14 +35,15 @@ def combine_xlsx(original_folder, translated_folder):
         if not os.path.exists(original_path):
             continue
 
-        original_wb = openpyxl.open(original_path)
+        original_wb = openpyxl.load_workbook(original_path)
         original_ws = original_wb.active
 
-        translated_wb = openpyxl.open(os.path.join(translated_folder, file_name))
+        translated_wb = openpyxl.load_workbook(os.path.join(translated_folder, file_name))
         translated_ws = translated_wb.active
 
         for index, row in enumerate(translated_ws.iter_rows(), 1):
-            original_ws.cell(row=index, column=4).value = row[2].value
+            if len(row) >= 3:
+                original_ws.cell(row=index, column=4).value = row[2].value
 
         original_wb.save(original_path)
         original_wb.close()
@@ -50,10 +56,10 @@ def insert_actor_column(old_folder, actor_folder):
             continue
 
         old_path = os.path.join(old_folder, file_name)
-        old_wb = openpyxl.open(old_path)
+        old_wb = openpyxl.load_workbook(old_path)
         old_ws = old_wb.active
 
-        actor_wb = openpyxl.open(os.path.join(actor_folder, file_name))
+        actor_wb = openpyxl.load_workbook(os.path.join(actor_folder, file_name))
         actor_ws = actor_wb.active
 
         for index, row in enumerate(actor_ws.iter_rows(), 1):
@@ -68,6 +74,97 @@ def insert_actor_column(old_folder, actor_folder):
 
         old_wb.save(old_path)
         old_wb.close()
+
+
+def remove_key_column(folder_path):
+    for file_name in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, file_name)
+
+        wb = openpyxl.load_workbook(file_path)
+        ws = wb.active
+        cell = ws['A1']
+        if not cell.value or not cell.value.startswith(os.path.splitext(file_name)):
+            print(f'{file_name} is empty or has no key column', file=sys.stderr)
+            continue
+
+        ws.delete_cols(1)
+        wb.save(file_path)
+        wb.close()
+        print(f'{file_name} removed')
+
+
+def compare_line_count(left_folder, right_folder):
+    for file_name in os.listdir(left_folder):
+        left_file_path = os.path.join(left_folder, file_name)
+        right_file_path = os.path.join(right_folder, file_name)
+
+        left_wb = openpyxl.load_workbook(left_file_path)
+        left_ws = left_wb.active
+
+        right_wb = openpyxl.load_workbook(right_file_path)
+        right_ws = right_wb.active
+
+        if left_ws.max_row != right_ws.max_row:
+            print(f'{file_name} has difference.')
+
+
+def insert_dialog(old_folder, new_folder):
+    for file_name in os.listdir(old_folder):
+        old_file_path = os.path.join(old_folder, file_name)
+        new_file_path = os.path.join(new_folder, file_name)
+
+        old_wb = openpyxl.load_workbook(old_file_path)
+        old_ws = old_wb.active
+
+        new_wb = openpyxl.load_workbook(new_file_path)
+        new_ws = new_wb.active
+
+        old_cursor = 1
+        for new_cursor, row in enumerate(new_ws.iter_rows(), 1):
+            same = True
+            for col_index, r in enumerate(row, 1):
+                same &= old_ws.cell(row=old_cursor, column=col_index).value == r.value
+
+            if same:
+                old_cursor += 1
+                continue
+
+            new_cell = new_ws.cell(row=new_cursor, column=1)
+            if new_cell.value.startswith('void dialog') or new_cell.value == text_converter.script_method:
+                old_ws.insert_rows(old_cursor)
+                for col_index, r in enumerate(row, 1):
+                    old_ws.cell(row=old_cursor, column=col_index).value = r.value
+            else:
+                print(f"Unknown cell missmatch occured!!!")
+                raise Exception
+
+            old_cursor += 1
+
+        old_wb.save(old_file_path)
+        old_wb.close()
+
+
+def get_actors(folder):
+    actors = set()
+    for chapter in os.listdir(folder):
+        chapter_path = os.path.join(folder, chapter)
+        if not os.path.isdir(chapter_path):
+            continue
+        for file in os.listdir(chapter_path):
+            if not file.endswith('.txt'):
+                continue
+
+            file_path = os.path.join(folder, chapter, file)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                conv = TextConverter(f.read())
+                actors.update(conv.extract_actor())
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    for actor in actors:
+        ws.append(actor)
+    wb.save('actor_raw.xlsx')
+    wb.close()
 
 
 if __name__ == '__main__':
@@ -88,10 +185,10 @@ available commands:
         )
     elif sys.argv[1] == 'export_text':
         converter = FolderConverter(sys.argv[2])
-        converter.export_text()
+        converter.export_text('xlsx')
     elif sys.argv[1] == 'replace_text':
         converter = FolderConverter(sys.argv[2])
-        converter.replace_text(sys.argv[3])
+        converter.replace_text(sys.argv[3], 'actor.xlsx')
     elif sys.argv[1] == 'validate_folder':
         validate_folder(sys.argv[2])
     elif sys.argv[1] == 'extract_text':
@@ -101,6 +198,14 @@ available commands:
         combine_xlsx(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == 'insert_actor_column':
         insert_actor_column(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == 'remove_key_column':
+        remove_key_column(sys.argv[2])
+    elif sys.argv[1] == 'compare_line_count':
+        compare_line_count(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == 'insert_dialog':
+        insert_dialog(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == 'get_actors':
+        get_actors(sys.argv[2])
     else:
         print("invalid command", file=sys.stderr)
         exit(-1)
