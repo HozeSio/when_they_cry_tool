@@ -3,6 +3,21 @@ import csv
 import openpyxl
 from text_converter import *
 
+HEADER_ROW = ('actor', 'japanese', 'english', 'korean', 'papago', 'comments')
+
+
+def has_header(worksheet: openpyxl.workbook.workbook.Worksheet):
+    return worksheet.cell(1, 1).value == 'actor' and worksheet.cell(1, 2).value == 'japanese'
+
+
+def ignore_row(first_cell):
+    value = first_cell.value
+    if value and (value.startswith(script_method) or
+                  value.startswith('void') or
+                  value == 'actor'):
+        return True
+    return False
+
 
 class FolderConverter:
     def __init__(self, folder_path):
@@ -21,8 +36,12 @@ class FolderConverter:
         wb = openpyxl.load_workbook(path)
         ws = wb.active
         translation = {}
-        for index, row in enumerate(ws.rows):
+        index = 0
+        for row in ws.rows:
             if prefix:
+                if ignore_row(row[0]):
+                    continue
+
                 key = f"{index}_{str(row[key_col].value)}"
             else:
                 key = str(row[key_col].value)
@@ -30,6 +49,8 @@ class FolderConverter:
             if key != 'None' and key in translation:
                 print(f'key duplication {key}')
             translation[key] = str(row[value_col].value)
+
+            index += 1
         wb.close()
         return translation
 
@@ -90,10 +111,9 @@ class FolderConverter:
             translation = dict(translation_base)
 
             file_path = os.path.join(translation_folder, file_name)
-            # new file format .tsv (actor, japanese, english, translation) and has header
+            # deprecated
             if ext == '.tsv':
                 translation.update(self.load_tsv(file_path))
-            # old file format .xlsx is (key, actor, japanese, english, translation)
             elif ext == '.xlsx':
                 translation.update(self.load_xlsx(file_path, 1, 3, True))
             else:

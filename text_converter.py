@@ -44,25 +44,16 @@ actor_pattern = re.compile(r'<color=[^>]*>([^<]*)</color>')
 remove_quotation_mark_pattern = re.compile(r'"(.*)"')
 
 
-full_to_half = [
-    ('～', '~'),
-    ('―', '-'),
-    ('ー', '-'),
-    ('！', '!'),
-    ('？', '?'),
-    ('Ⅹ', '?'),
-    ('…', '...'),
-    ('０', '0'),
-    ('１', '1'),
-    ('２', '2'),
-    ('３', '3'),
-    ('４', '4'),
-    ('５', '5'),
-    ('６', '6'),
-    ('７', '7'),
-    ('８', '8'),
-    ('９', '9'),
-]
+full_to_half_ascii = dict((i + 0xFEE0, i) for i in range(0x21, 0x7F))
+custom_map = {
+    '～': '~',
+    '―': '-',
+    'ー': '-',
+    '…': '...',
+    '궃': '궂',
+    '줫': '줬',
+    '졋': '졌',
+}
 
 
 def strip_quotation_mark(line: str):
@@ -129,7 +120,7 @@ class OutputLine:
         return self.param2 == 'NULL' and self.param4 == 'NULL'
 
     def get_actor_text(self, param):
-        return strip_quotation_mark(actor_pattern.sub(r'\1', param))
+        return strip_quotation_mark(actor_pattern.sub(r'\1', param)) if param != 'NULL' else None
 
     def get_actor1(self):
         return self.get_actor_text(self.param1)
@@ -197,10 +188,9 @@ class TextConverter:
                 key = None
             translated_text = self.translation[key]
             if translated_text:
-                for full_half in full_to_half:
-                    translated_text = translated_text.replace(full_half[0], full_half[1])
-                translated_text.replace('궃', '궂')
                 translated_text = translated_text.strip()
+                translated_text = translated_text.translate(full_to_half_ascii)
+                translated_text = translated_text.translate(custom_map)
         except KeyError:
             print(line.text)
             raise
@@ -213,39 +203,37 @@ class TextConverter:
         return output_pattern.sub(self.repl_replace_text, self.text)
 
     def validate_text(self):
+        result = True
         for method_match in output_pattern.finditer(self.text):
             line = OutputLine(method_match)
             if not line.is_actor_line():
                 try:
                     param2 = strip_quotation_mark(line.param2)
                     param4 = strip_quotation_mark(line.param4)
-                except ValueError:
+
+                    index = -1
+                    while True:
+                        index = param4.find('\\', index + 1)
+                        if index == -1:
+                            break
+
+                        if param4[index + 1] != '"' and param4[index + 1] != 'n':
+                            raise Exception
+
+                    index = -1
+                    while True:
+                        index = param4.find('"', index + 1)
+                        if index == -1:
+                            break
+
+                        if param4[index - 1] != '\\':
+                            raise Exception
+                except Exception:
                     print(f"\nValidation error!!\n{line.text}")
-                    return False
-
-                index = -1
-                while True:
-                    index = param4.find('\\', index + 1)
-                    if index == -1:
-                        break
-
-                    if param4[index + 1] != '"' and param4[index + 1] != 'n':
-                        print(f"\nValidation error!!\n{line.text}")
-                        return False
-
-                index = -1
-                while True:
-                    index = param4.find('"', index + 1)
-                    if index == -1:
-                        break
-
-                    if param4[index - 1] != '\\':
-                        print(f"\nValidation error!!\n{line.text}")
-                        return False
-
+                    result = False
             else:
                 pass
-        return True
+        return result
 
     def extract_actor(self):
         actors = set()

@@ -1,8 +1,12 @@
-#!/usr/bin/env python3
 import translation_extractor
 from folder_converter import *
 import text_converter
+import drive
 import openpyxl
+import urllib.request
+import urllib.parse
+import settings
+import json
 
 
 def validate_folder(folder_path: str):
@@ -18,7 +22,7 @@ def validate_folder(folder_path: str):
             result &= text_converter.validate_text()
 
     if not result:
-        print('validation error!!!')
+        print('validation error found!!!')
         sys.exit(-1)
     else:
         print('validation success.')
@@ -110,6 +114,7 @@ def compare_line_count(left_folder, right_folder):
 
 def insert_dialog(old_folder, new_folder):
     for file_name in os.listdir(old_folder):
+        print(f'Start processing {file_name}')
         old_file_path = os.path.join(old_folder, file_name)
         new_file_path = os.path.join(new_folder, file_name)
 
@@ -125,18 +130,29 @@ def insert_dialog(old_folder, new_folder):
             for col_index, r in enumerate(row, 1):
                 same &= old_ws.cell(row=old_cursor, column=col_index).value == r.value
 
+            first_cell = new_ws.cell(row=new_cursor, column=1)
             if same:
-                old_cursor += 1
-                continue
-
-            new_cell = new_ws.cell(row=new_cursor, column=1)
-            if new_cell.value.startswith('void dialog') or new_cell.value == text_converter.script_method:
+                pass
+            elif ignore_row(first_cell):
                 old_ws.insert_rows(old_cursor)
                 for col_index, r in enumerate(row, 1):
                     old_ws.cell(row=old_cursor, column=col_index).value = r.value
+                print(f'New line added')
+            elif new_ws.cell(new_cursor, 2).value == old_ws.cell(old_cursor, 2).value:
+                old_ws.cell(old_cursor, 1).value = new_ws.cell(new_cursor, 1).value
+                old_ws.cell(old_cursor, 3).value = new_ws.cell(new_cursor, 3).value
             else:
-                print(f"Unknown cell missmatch occured!!!")
-                raise Exception
+                print(f"Unknown cell missmatch occured at line {old_cursor}!!!")
+                values = []
+                for r in row:
+                    values.append(str(r.value))
+                print(f"New row : ({','.join(values)})")
+                values.clear()
+                for rows in old_ws.iter_rows(old_cursor, old_cursor):
+                    for r in rows:
+                        values.append(str(r.value))
+                print(f"Old row : ({','.join(values)})")
+                return
 
             old_cursor += 1
 
@@ -165,6 +181,87 @@ def get_actors(folder):
         ws.append(actor)
     wb.save('actor_raw.xlsx')
     wb.close()
+
+
+def insert_papago(folder):
+    TRANSLATION_FILE = 'translation.json'
+    translation_dict = {}
+    if os.path.exists(TRANSLATION_FILE):
+        with open(TRANSLATION_FILE, 'r', encoding='utf-8') as fd:
+            translation_dict = json.load(fd)
+
+    try:
+        for file in os.listdir(folder):
+            if not file.endswith('.xlsx'):
+                continue
+
+            print(f"Processing {file}")
+            file_path = os.path.join(folder, file)
+            wb = openpyxl.load_workbook(file_path)
+            ws = wb.active
+            if not has_header(ws):
+                ws.insert_rows(1)
+                ws.insert_cols(5)
+                for col, header in enumerate(HEADER_ROW, start=1):
+                    ws.cell(1, col, header)
+            for row_index, row in enumerate(ws.rows, start=1):
+                if ignore_row(row[0]):
+                    continue
+
+                source = row[1].value
+                source = source and source.strip(' 　')
+                if not source:
+                    continue
+
+                if source in translation_dict:
+                    ws.cell(row_index, 5).value = translation_dict[source]
+                    continue
+
+                encText = urllib.parse.quote(source)
+                data = f"source=ja&target=ko&text={encText}"
+                url = "https://naveropenapi.apigw.ntruss.com/nmt/v1/translation"
+                request = urllib.request.Request(url)
+                request.add_header('X-NCP-APIGW-API-KEY-ID', settings.CLIENT_ID)
+                request.add_header('X-NCP-APIGW-API-KEY', settings.CLIENT_SECRET)
+                response = urllib.request.urlopen(request, data=data.encode('utf-8'))
+                rscode = response.getcode()
+                if rscode != 200:
+                    raise Exception
+                response_raw = response.read().decode('utf-8')
+                response_json = json.loads(response_raw)
+                translated_text = response_json['message']['result']['translatedText']
+                translation_dict[source] = translated_text
+                ws.cell(row_index, 5).value = translated_text
+                print(f"Translating {source} to {translated_text}")
+            wb.save(file_path)
+            wb.close()
+    finally:
+        with open(TRANSLATION_FILE, 'w', encoding='utf-8') as fd:
+            json.dump(translation_dict, fd, ensure_ascii=False)
+
+
+def unique_characters(folder_path):
+    characters = set()
+    for chapter in os.listdir(folder_path):
+        chapter_path = os.path.join(folder_path, chapter)
+        if not os.path.isdir(chapter_path):
+            continue
+        for file in os.listdir(chapter_path):
+            if not file.endswith('.xlsx'):
+                continue
+
+            wb = openpyxl.load_workbook(os.path.join(folder_path, chapter, file))
+            ws = wb.active
+            for index, row in enumerate(ws.rows, 1):
+                korean = ws.cell(index, 4).value
+                if not korean:
+                    continue
+                for c in korean:
+                    characters.add(c)
+    characters.difference()
+    chars_list = list(characters)
+    chars_list.sort()
+    print(''.join(chars_list))
 
 
 if __name__ == '__main__':
@@ -206,6 +303,14 @@ available commands:
         insert_dialog(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == 'get_actors':
         get_actors(sys.argv[2])
+    elif sys.argv[1] == 'download':
+        drive.download_drive(f"{os.path.pardir}{os.path.sep}Drive")
+    elif sys.argv[1] == 'upload':
+        drive.upload_drive(f"{os.path.pardir}{os.path.sep}Drive")
+    elif sys.argv[1] == 'insert_papago':
+        insert_papago(sys.argv[2])
+    elif sys.argv[1] == 'unique_characters':
+        unique_characters(sys.argv[2])
     else:
         print("invalid command", file=sys.stderr)
         exit(-1)
