@@ -15,7 +15,7 @@ TRANSLATION_FOLDER_ID = '1Q8BO4CB6tGk-hpYsPOq_Tc6FVPYqP5JA'
 #TRANSLATION_FOLDER_ID = '1W7Yxvl3WRzZ1fDbuim8EPediY0qrxWBe'
 
 
-def get_files(service, folderId, files):
+def get_files(service, folderId, files, filter_folder_name):
     page_token = None
     while True:
         try:
@@ -31,8 +31,10 @@ def get_files(service, folderId, files):
                 mimeType = child['mimeType']
                 if mimeType == 'application/vnd.google-apps.folder':
                     sub_folder_name = child['name']
+                    if filter_folder_name and sub_folder_name != filter_folder_name:
+                        continue
                     files[sub_folder_name] = {}
-                    get_files(service, child['id'], files[sub_folder_name])
+                    get_files(service, child['id'], files[sub_folder_name], None)
                 # xlsx
                 elif mimeType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
                     present_files = files.get('.', [])
@@ -122,12 +124,12 @@ def upload_folder(drive_service, tree, folder_path):
                                                 ).execute()
 
 
-def download_drive(local_folder):
+def download_drive(local_folder, filter_folder_name=None):
     creds = get_creds()
     drive_service = build('drive', 'v3', credentials=creds)
 
     root = {}
-    get_files(drive_service, TRANSLATION_FOLDER_ID, root)
+    get_files(drive_service, TRANSLATION_FOLDER_ID, root, filter_folder_name)
 
     downloaders = download_folder(drive_service, root, local_folder)
     while downloaders:
@@ -139,11 +141,11 @@ def download_drive(local_folder):
                 downloaders.remove(item)
 
 
-def upload_drive(local_folder):
+def upload_drive(local_folder, filter_folder_name=None):
     creds = get_creds()
     drive_service = build('drive', 'v3', credentials=creds)
 
     root = {}
-    get_files(drive_service, TRANSLATION_FOLDER_ID, root)
+    get_files(drive_service, TRANSLATION_FOLDER_ID, root, filter_folder_name)
 
     upload_folder(drive_service, root, local_folder)

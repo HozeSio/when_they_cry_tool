@@ -160,9 +160,11 @@ def insert_dialog(old_folder, new_folder):
         old_wb.close()
 
 
-def get_actors(folder):
+def get_actors(folder, filter_folder):
     actors = set()
     for chapter in os.listdir(folder):
+        if filter_folder and chapter != filter_folder:
+            continue
         chapter_path = os.path.join(folder, chapter)
         if not os.path.isdir(chapter_path):
             continue
@@ -190,54 +192,62 @@ def insert_papago(folder):
         with open(TRANSLATION_FILE, 'r', encoding='utf-8') as fd:
             translation_dict = json.load(fd)
 
-    try:
         for file in os.listdir(folder):
             if not file.endswith('.xlsx'):
                 continue
 
-            print(f"Processing {file}")
-            file_path = os.path.join(folder, file)
-            wb = openpyxl.load_workbook(file_path)
-            ws = wb.active
-            if not has_header(ws):
-                ws.insert_rows(1)
-                ws.insert_cols(5)
-                for col, header in enumerate(HEADER_ROW, start=1):
-                    ws.cell(1, col, header)
-            for row_index, row in enumerate(ws.rows, start=1):
-                if ignore_row(row[0]):
-                    continue
+            has_update = False
+            try:
+                print(f"Processing {file}")
+                file_path = os.path.join(folder, file)
+                wb = openpyxl.load_workbook(file_path)
+                ws = wb.active
+                if not has_header(ws):
+                    ws.insert_rows(1)
+                    ws.insert_cols(5)
+                    for col, header in enumerate(HEADER_ROW, start=1):
+                        ws.cell(1, col, header)
+                    has_update = True
+                for row_index, row in enumerate(ws.rows, start=1):
+                    if ignore_row(row[0]):
+                        continue
 
-                source = row[1].value
-                source = source and source.strip(' 　')
-                if not source:
-                    continue
+                    source = row[1].value
+                    source = source and source.strip(' 　')
+                    if not source:
+                        continue
 
-                if source in translation_dict:
-                    ws.cell(row_index, 5).value = translation_dict[source]
-                    continue
+                    if source in translation_dict:
+                        old_translation_cell = ws.cell(row_index, 5)
+                        if old_translation_cell.value != translation_dict[source]:
+                            old_translation_cell.value = translation_dict[source]
+                            has_update = True
+                        continue
 
-                encText = urllib.parse.quote(source)
-                data = f"source=ja&target=ko&text={encText}"
-                url = "https://naveropenapi.apigw.ntruss.com/nmt/v1/translation"
-                request = urllib.request.Request(url)
-                request.add_header('X-NCP-APIGW-API-KEY-ID', settings.CLIENT_ID)
-                request.add_header('X-NCP-APIGW-API-KEY', settings.CLIENT_SECRET)
-                response = urllib.request.urlopen(request, data=data.encode('utf-8'))
-                rscode = response.getcode()
-                if rscode != 200:
-                    raise Exception
-                response_raw = response.read().decode('utf-8')
-                response_json = json.loads(response_raw)
-                translated_text = response_json['message']['result']['translatedText']
-                translation_dict[source] = translated_text
-                ws.cell(row_index, 5).value = translated_text
-                print(f"Translating {source} to {translated_text}")
-            wb.save(file_path)
-            wb.close()
-    finally:
-        with open(TRANSLATION_FILE, 'w', encoding='utf-8') as fd:
-            json.dump(translation_dict, fd, ensure_ascii=False)
+                    encText = urllib.parse.quote(source)
+                    data = f"source=ja&target=ko&text={encText}"
+                    url = "https://naveropenapi.apigw.ntruss.com/nmt/v1/translation"
+                    request = urllib.request.Request(url)
+                    request.add_header('X-NCP-APIGW-API-KEY-ID', settings.CLIENT_ID)
+                    request.add_header('X-NCP-APIGW-API-KEY', settings.CLIENT_SECRET)
+                    response = urllib.request.urlopen(request, data=data.encode('utf-8'))
+                    rscode = response.getcode()
+                    if rscode != 200:
+                        raise Exception
+                    response_raw = response.read().decode('utf-8')
+                    response_json = json.loads(response_raw)
+                    translated_text = response_json['message']['result']['translatedText']
+                    translation_dict[source] = translated_text
+                    ws.cell(row_index, 5).value = translated_text
+                    print(f"Translated {source} to {translated_text}")
+                    has_update = True
+                if has_update:
+                    wb.save(file_path)
+                wb.close()
+            finally:
+                if has_update:
+                    with open(TRANSLATION_FILE, 'w', encoding='utf-8') as fd:
+                        json.dump(translation_dict, fd, ensure_ascii=False)
 
 
 def unique_characters(folder_path):
@@ -262,6 +272,21 @@ def unique_characters(folder_path):
     chars_list = list(characters)
     chars_list.sort()
     print(''.join(chars_list))
+
+
+def find_old_format(folder_path):
+    for chapter in os.listdir(folder_path):
+        chapter_path = os.path.join(folder_path, chapter)
+        if not os.path.isdir(chapter_path):
+            continue
+        for file in os.listdir(chapter_path):
+            if not file.endswith('.xlsx'):
+                continue
+
+            wb = openpyxl.load_workbook(os.path.join(folder_path, chapter, file))
+            ws = wb.active
+            if not has_header(ws):
+                print(f"{os.path.join(chapter, file)} has deprecated format")
 
 
 if __name__ == '__main__':
@@ -302,15 +327,17 @@ available commands:
     elif sys.argv[1] == 'insert_dialog':
         insert_dialog(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == 'get_actors':
-        get_actors(sys.argv[2])
+        get_actors(sys.argv[2], sys.argv[3] if len(sys.argv) >= 4 else None)
     elif sys.argv[1] == 'download':
-        drive.download_drive(f"{os.path.pardir}{os.path.sep}Drive")
+        drive.download_drive(f"{os.path.pardir}{os.path.sep}Drive", sys.argv[2] if len(sys.argv) >= 3 else None)
     elif sys.argv[1] == 'upload':
-        drive.upload_drive(f"{os.path.pardir}{os.path.sep}Drive")
+        drive.upload_drive(f"{os.path.pardir}{os.path.sep}Drive", sys.argv[2] if len(sys.argv) >= 3 else None)
     elif sys.argv[1] == 'insert_papago':
         insert_papago(sys.argv[2])
     elif sys.argv[1] == 'unique_characters':
         unique_characters(sys.argv[2])
+    elif sys.argv[1] == 'find_old_format':
+        find_old_format(sys.argv[2])
     else:
         print("invalid command", file=sys.stderr)
         exit(-1)

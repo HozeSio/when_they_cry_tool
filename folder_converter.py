@@ -1,6 +1,7 @@
 import os
 import csv
 import openpyxl
+from openpyxl.styles import Protection
 from text_converter import *
 
 HEADER_ROW = ('actor', 'japanese', 'english', 'korean', 'papago', 'comments')
@@ -27,8 +28,16 @@ class FolderConverter:
     def save_xlsx(self, sentences, path):
         wb = openpyxl.Workbook()
         ws = wb.active
+        ws.protection.enable()
+        ws.append(HEADER_ROW)
         for sentence in sentences:
             ws.append(sentence)
+        for col in ws.iter_cols(min_col=4, max_col=4, min_row=2):
+            for cell in col:
+                cell.protection = Protection(locked=False)
+        for col in ws.iter_cols(min_col=6, max_col=6, min_row=2):
+            for cell in col:
+                cell.protection = Protection(locked=False)
         wb.save(path)
         wb.close()
 

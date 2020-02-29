@@ -46,13 +46,14 @@ remove_quotation_mark_pattern = re.compile(r'"(.*)"')
 
 full_to_half_ascii = dict((i + 0xFEE0, i) for i in range(0x21, 0x7F))
 custom_map = {
-    '～': '~',
-    '―': '-',
-    'ー': '-',
-    '…': '...',
-    '궃': '궂',
-    '줫': '줬',
-    '졋': '졌',
+    ord('～'): '~',
+    ord('―'): '-',
+    ord('ー'): '-',
+    ord('…'): '...',
+    ord('궃'): '궂',
+    ord('줫'): '줬',
+    ord('졋'): '졌',
+    ord('됬'): '됐',
 }
 
 
@@ -188,13 +189,13 @@ class TextConverter:
                 key = None
             translated_text = self.translation[key]
             if translated_text:
-                translated_text = translated_text.strip()
+                # translated_text = translated_text.strip()
                 translated_text = translated_text.translate(full_to_half_ascii)
                 translated_text = translated_text.translate(custom_map)
         except KeyError:
             print(line.text)
             raise
-        line.param4 = f'\"{translated_text} \"'
+        line.param4 = f'\"{translated_text}\"'
         return line.text
 
     def replace_text(self, translation: {}):
