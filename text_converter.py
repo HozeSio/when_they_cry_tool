@@ -170,11 +170,11 @@ class TextConverter:
             return line.text
 
         if line.is_actor_line():
-            if line.param3 == "NULL":
-                return line.text
-            keys = line.get_actors(line.param3)
+            keys = line.get_actors(line.param1)
+            line.param3 = line.param1
             for key in keys:
                 line.param3 = line.param3.replace(key, self.translation[key])
+                line.param3 = line.param3.translate(full_to_half_ascii)
             return line.text
 
         # replace english text to translation text based on japanese text
@@ -192,6 +192,7 @@ class TextConverter:
                 # translated_text = translated_text.strip()
                 translated_text = translated_text.translate(full_to_half_ascii)
                 translated_text = translated_text.translate(custom_map)
+                translated_text = translated_text.replace('&', ' & ')
         except KeyError:
             print(line.text)
             raise
@@ -245,9 +246,8 @@ class TextConverter:
 
             jp_actors = line.get_actors(line.param1)
             en_actors = line.get_actors(line.param3)
-            for index in range(0, len(en_actors)):
-                try:
-                    actors.add((jp_actors[index], en_actors[index]))
-                except IndexError:
-                    pass
+            longest = max(len(jp_actors), len(en_actors))
+            for index in range(0, longest):
+                actors.add((jp_actors[index] if len(jp_actors) > index else None,
+                            en_actors[index] if len(en_actors) > index else None))
         return actors

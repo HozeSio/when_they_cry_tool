@@ -106,7 +106,7 @@ class FolderConverter:
         if not os.path.exists(replaced_folder):
             os.mkdir(replaced_folder)
 
-        translation_base = self.load_xlsx(actor_path, 1, 2, False)
+        translation_base = self.load_xlsx(actor_path, 0, 2, False)
         translation_base[None] = ''
 
         translation_folder = os.path.normpath(translation_folder)
