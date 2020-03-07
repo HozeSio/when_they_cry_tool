@@ -268,10 +268,23 @@ def unique_characters(folder_path):
                     continue
                 for c in korean:
                     characters.add(c)
-    characters.difference()
     chars_list = list(characters)
     chars_list.sort()
-    print(''.join(chars_list))
+    with open('characters.txt', 'w', encoding='utf-8') as fd:
+        fd.write(''.join(chars_list))
+    with open('old_characters.txt', 'r', encoding='utf-8') as fd:
+        text = fd.read()
+        old_characters = set()
+        for c in text:
+            old_characters.add(c)
+    half_characters = set()
+    for c in characters:
+        half_characters.add(c.translate(text_converter.full_to_half_ascii))
+    difference = half_characters.difference(old_characters)
+    difference = list(difference)
+    difference.sort()
+    with open('difference.txt', 'w', encoding='utf-8') as fd:
+        fd.write(''.join(difference))
 
 
 def find_old_format(folder_path):
