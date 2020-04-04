@@ -135,7 +135,11 @@ def download_drive(local_folder, filter_folder_name=None):
     while downloaders:
         for item in downloaders[:10]:
             down, fd = item
-            status, done = down.next_chunk()
+            try:
+                status, done = down.next_chunk()
+            except errors.HttpError:
+                print(f"Failed to downloading {fd.name}")
+                raise
             if done:
                 fd.close()
                 downloaders.remove(item)

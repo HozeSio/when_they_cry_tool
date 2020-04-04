@@ -3,8 +3,9 @@ import csv
 import openpyxl
 from openpyxl.styles import Protection
 from text_converter import *
+from settings import VERSION
 
-HEADER_ROW = ('actor', 'japanese', 'english', 'korean', 'papago', 'comments')
+HEADER_ROW = ('actor', 'japanese', 'english', 'korean', 'papago', 'comments', VERSION)
 
 
 def has_header(worksheet: openpyxl.workbook.workbook.Worksheet):
@@ -15,7 +16,8 @@ def ignore_row(first_cell):
     value = first_cell.value
     if value and (value.startswith(script_method) or
                   value.startswith('void') or
-                  value == 'actor'):
+                  value == HEADER_ROW[0] or
+                  value == fade_bgm_method):
         return True
     return False
 
@@ -41,23 +43,37 @@ class FolderConverter:
         wb.save(path)
         wb.close()
 
-    def load_xlsx(self, path, key_col, value_col, prefix):
+    def load_actor_translation(self, path):
+        wb = openpyxl.load_workbook(path)
+        ws = wb.active
+        translation = {}
+        for row in ws.rows:
+            key = str(row[0].value)
+            if key != 'None' and key in translation:
+                print(f'key duplication {key}')
+            translation[key] = str(row[2].value)
+        wb.close()
+        return translation
+
+    def load_xlsx(self, path):
         wb = openpyxl.load_workbook(path)
         ws = wb.active
         translation = {}
         index = 0
         for row in ws.rows:
-            if prefix:
-                if ignore_row(row[0]):
-                    continue
+            if ignore_row(row[0]):
+                continue
 
-                key = f"{index}_{str(row[key_col].value)}"
+            if row[0].value and row[0].value == play_bgm_method:
+                key = f"{index}_{row[0].value}"
+                value = row[1].value
             else:
-                key = str(row[key_col].value)
+                key = f"{index}_{str(row[1].value)}"
+                value = str(row[3].value)
 
             if key != 'None' and key in translation:
                 print(f'key duplication {key}')
-            translation[key] = str(row[value_col].value)
+            translation[key] = value
 
             index += 1
         wb.close()
@@ -106,7 +122,7 @@ class FolderConverter:
         if not os.path.exists(replaced_folder):
             os.mkdir(replaced_folder)
 
-        translation_base = self.load_xlsx(actor_path, 0, 2, False)
+        translation_base = self.load_actor_translation(actor_path)
         translation_base[None] = ''
 
         translation_folder = os.path.normpath(translation_folder)
@@ -124,7 +140,7 @@ class FolderConverter:
             if ext == '.tsv':
                 translation.update(self.load_tsv(file_path))
             elif ext == '.xlsx':
-                translation.update(self.load_xlsx(file_path, 1, 3, True))
+                translation.update(self.load_xlsx(file_path))
             else:
                 raise ModuleNotFoundError
 

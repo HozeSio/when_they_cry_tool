@@ -34,10 +34,45 @@ script_pattern = re.compile(rf"""
 
 dialog_pattern = re.compile(r'void\ dialog\d+\s*\(\)', re.VERBOSE | re.MULTILINE)
 
+play_bgm_method = 'PlayBGM'
+play_bgm_pattern = re.compile(rf"""
+(
+{play_bgm_method}
+\(\s*
+)               # [11]
+([^,]*)         # BGM channel [12]
+(\s*,\s*)
+([^,]*)         # BGM name [14]
+(\s*,\s*)
+([^,]*)
+(\s*,\s*)
+([^,]*)
+(\s*\);)        # [19]
+""", re.VERBOSE | re.MULTILINE)
+
+fade_bgm_method = 'FadeOutBGM'
+fade_bgm_pattern = re.compile(rf"""
+{fade_bgm_method}
+\(\s*
+([^,]*)
+\s*,\s*
+([^,]*)
+\s*,\s*
+([^,]*)
+\s*\);
+""", re.VERBOSE | re.MULTILINE)
+
 parse_pattern = re.compile(rf"""(?:
 {output_pattern.pattern}|
 {script_pattern.pattern}|
-{dialog_pattern.pattern})
+{dialog_pattern.pattern}|
+{play_bgm_pattern.pattern}|
+{fade_bgm_pattern.pattern})
+""", re.VERBOSE | re.MULTILINE)
+
+repl_pattern = re.compile(rf"""(?:
+{output_pattern.pattern}|
+{play_bgm_pattern.pattern})
 """, re.VERBOSE | re.MULTILINE)
 
 actor_pattern = re.compile(r'<color=[^>]*>([^<]*)</color>')
@@ -112,7 +147,7 @@ class OutputLine:
 
     @property
     def text(self):
-        return ''.join(self.groups)
+        return ''.join(self.groups[:11])
 
     def is_ignore_line(self):
         return self.param2.startswith('\"<size=') or self.param4.startswith('\"<size=')
@@ -141,6 +176,7 @@ class TextConverter:
         self.text = text
         self.translation = {}
         self.index = 0
+        self.last_translated_text:str = None
 
     def extract_text(self):
         sentences = []
@@ -150,6 +186,10 @@ class TextConverter:
                 sentences.append((script_method, match.group(12), match.group(13)))
             elif match.group().startswith('void'):
                 sentences.append((match.group(),))
+            elif match.group().startswith(play_bgm_method):
+                sentences.append((play_bgm_method, strip_quotation_mark(match.group(15))))
+            elif match.group().startswith(fade_bgm_method):
+                pass
             else:
                 line = OutputLine(match)
 
@@ -164,6 +204,13 @@ class TextConverter:
         return sentences
 
     def repl_replace_text(self, match_obj) -> str:
+        if match_obj.group().startswith(play_bgm_method):
+            groups = list(match_obj.groups())
+            key = f"{self.index}_{play_bgm_method}"
+            groups[14] = f"\"{self.translation[key]}\""
+            self.index += 1
+            return ''.join(groups[11:20])
+
         line = OutputLine(match_obj)
 
         if line.is_ignore_line():
@@ -189,10 +236,12 @@ class TextConverter:
                 key = None
             translated_text = self.translation[key]
             if translated_text:
-                # translated_text = translated_text.strip()
+                translated_text = translated_text.rstrip()
                 translated_text = translated_text.translate(full_to_half_ascii)
                 translated_text = translated_text.translate(custom_map)
                 translated_text = translated_text.replace('&', ' & ')
+                if self.last_translated_text and self.last_translated_text[len(self.last_translated_text)-1] != '.':
+                    translated_text = f" {translated_text}"
         except KeyError:
             print(line.text)
             raise
@@ -202,7 +251,8 @@ class TextConverter:
     def replace_text(self, translation: {}):
         self.translation = translation
         self.index = 0
-        return output_pattern.sub(self.repl_replace_text, self.text)
+        self.last_translated_text = None
+        return repl_pattern.sub(self.repl_replace_text, self.text)
 
     def validate_text(self):
         result = True
