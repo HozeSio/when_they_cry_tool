@@ -66,7 +66,10 @@ class FolderConverter:
 
             if row[0].value and row[0].value == play_bgm_method:
                 key = f"{index}_{row[0].value}"
-                value = row[1].value
+                if row[3].value is not None:
+                    value = row[3].value
+                else:
+                    value = row[1].value
             else:
                 key = f"{index}_{str(row[1].value)}"
                 value = str(row[3].value)
