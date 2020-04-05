@@ -2,6 +2,7 @@ import os
 import csv
 import openpyxl
 from openpyxl.styles import Protection
+from openpyxl.styles import PatternFill
 from text_converter import *
 from settings import VERSION
 
@@ -32,8 +33,17 @@ class FolderConverter:
         ws = wb.active
         ws.protection.enable()
         ws.append(HEADER_ROW)
-        for sentence in sentences:
+        for row_index, sentence in enumerate(sentences, 2):
             ws.append(sentence)
+            if ws.cell(row_index, 1).value == play_bgm_method:
+                for col in ws.iter_cols(min_row=row_index, max_row=row_index):
+                    for cell in col:
+                        cell.fill = PatternFill(patternType='solid', fgColor='FF9F40')
+            elif ws.cell(row_index, 1).value == script_method:
+                for col in ws.iter_cols(min_row=row_index, max_row=row_index):
+                    for cell in col:
+                        cell.fill = PatternFill(patternType='solid', fgColor='B7E3FF')
+
         for col in ws.iter_cols(min_col=4, max_col=4, min_row=2):
             for cell in col:
                 cell.protection = Protection(locked=False)
