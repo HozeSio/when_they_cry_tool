@@ -112,7 +112,7 @@ def compare_line_count(left_folder, right_folder):
             print(f'{file_name} has difference.')
 
 
-def insert_dialog(old_folder, new_folder):
+def insert_new_rows(old_folder, new_folder):
     for file_name in os.listdir(old_folder):
         print(f'Start processing {file_name}')
         old_file_path = os.path.join(old_folder, file_name)
@@ -133,26 +133,32 @@ def insert_dialog(old_folder, new_folder):
             first_cell = new_ws.cell(row=new_cursor, column=1)
             if same:
                 pass
-            elif ignore_row(first_cell):
+            elif first_cell.value and first_cell.value == text_converter.play_bgm_method:
                 old_ws.insert_rows(old_cursor)
                 for col_index, r in enumerate(row, 1):
                     old_ws.cell(row=old_cursor, column=col_index).value = r.value
-                print(f'New line added')
-            elif new_ws.cell(new_cursor, 2).value == old_ws.cell(old_cursor, 2).value:
-                old_ws.cell(old_cursor, 1).value = new_ws.cell(new_cursor, 1).value
-                old_ws.cell(old_cursor, 3).value = new_ws.cell(new_cursor, 3).value
-            else:
-                print(f"Unknown cell missmatch occured at line {old_cursor}!!!")
-                values = []
-                for r in row:
-                    values.append(str(r.value))
-                print(f"New row : ({','.join(values)})")
-                values.clear()
-                for rows in old_ws.iter_rows(old_cursor, old_cursor):
-                    for r in rows:
-                        values.append(str(r.value))
-                print(f"Old row : ({','.join(values)})")
-                return
+                print(f'Added BGM line')
+            #
+            # elif ignore_row(first_cell) or first_cell.value and first_cell.value == text_converter.play_bgm_method:
+            #     old_ws.insert_rows(old_cursor)
+            #     for col_index, r in enumerate(row, 1):
+            #         old_ws.cell(row=old_cursor, column=col_index).value = r.value
+            #     print(f'New line added')
+            # elif new_ws.cell(new_cursor, 2).value == old_ws.cell(old_cursor, 2).value:
+            #     old_ws.cell(old_cursor, 1).value = new_ws.cell(new_cursor, 1).value
+            #     old_ws.cell(old_cursor, 3).value = new_ws.cell(new_cursor, 3).value
+            # else:
+            #     print(f"Unknown cell missmatch occured at line {old_cursor}!!!")
+            #     values = []
+            #     for r in row:
+            #         values.append(str(r.value))
+            #     print(f"New row : ({','.join(values)})")
+            #     values.clear()
+            #     for rows in old_ws.iter_rows(old_cursor, old_cursor):
+            #         for r in rows:
+            #             values.append(str(r.value))
+            #     print(f"Old row : ({','.join(values)})")
+            #     return
 
             old_cursor += 1
 
@@ -337,8 +343,8 @@ available commands:
         remove_key_column(sys.argv[2])
     elif sys.argv[1] == 'compare_line_count':
         compare_line_count(sys.argv[2], sys.argv[3])
-    elif sys.argv[1] == 'insert_dialog':
-        insert_dialog(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == 'insert_new_rows':
+        insert_new_rows(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == 'get_actors':
         get_actors(sys.argv[2], sys.argv[3] if len(sys.argv) >= 4 else None)
     elif sys.argv[1] == 'download':

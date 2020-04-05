@@ -187,7 +187,7 @@ class TextConverter:
             elif match.group().startswith('void'):
                 sentences.append((match.group(),))
             elif match.group().startswith(play_bgm_method):
-                sentences.append((play_bgm_method, strip_quotation_mark(match.group(15))))
+                sentences.append((play_bgm_method, strip_quotation_mark(match.group(17))))
             elif match.group().startswith(fade_bgm_method):
                 pass
             else:
