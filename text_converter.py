@@ -242,6 +242,7 @@ class TextConverter:
                 translated_text = translated_text.replace('&', ' & ')
                 if self.last_translated_text and self.last_translated_text[len(self.last_translated_text)-1] != '.':
                     translated_text = f" {translated_text}"
+                self.last_translated_text = translated_text
         except KeyError:
             print(line.text)
             raise
