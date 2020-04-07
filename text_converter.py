@@ -236,13 +236,11 @@ class TextConverter:
                 key = None
             translated_text = self.translation[key]
             if translated_text:
-                translated_text = translated_text.rstrip()
+                if len(translated_text.rstrip()) > 1:
+                    translated_text = f"{translated_text.rstrip()} "
                 translated_text = translated_text.translate(full_to_half_ascii)
                 translated_text = translated_text.translate(custom_map)
                 translated_text = translated_text.replace('&', ' & ')
-                if self.last_translated_text and self.last_translated_text[len(self.last_translated_text)-1] != '.':
-                    translated_text = f" {translated_text}"
-                self.last_translated_text = translated_text
         except KeyError:
             print(line.text)
             raise
