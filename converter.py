@@ -7,6 +7,7 @@ import urllib.request
 import urllib.parse
 import settings
 import json
+import onscript
 
 
 def validate_folder(folder_path: str):
@@ -357,6 +358,8 @@ available commands:
         unique_characters(sys.argv[2])
     elif sys.argv[1] == 'find_old_format':
         find_old_format(sys.argv[2])
+    elif sys.argv[1] == 'export_text_onscript':
+        onscript.FolderParser(sys.argv[2]).export_text()
     else:
         print("invalid command", file=sys.stderr)
         exit(-1)
