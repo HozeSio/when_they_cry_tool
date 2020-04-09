@@ -359,6 +359,8 @@ available commands:
     elif sys.argv[1] == 'find_old_format':
         find_old_format(sys.argv[2])
     elif sys.argv[1] == 'export_text_onscript':
+        onscript.FolderParser(sys.argv[2]).export_text(mode='onscript')
+    elif sys.argv[1] == 'export_text_steam':
         onscript.FolderParser(sys.argv[2]).export_text()
     else:
         print("invalid command", file=sys.stderr)
