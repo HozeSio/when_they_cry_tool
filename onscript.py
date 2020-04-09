@@ -95,6 +95,7 @@ class FolderParser:
         converted_folder = os.path.join(self.folder_directory, self.folder_name + '_output')
         if not os.path.exists(converted_folder):
             os.mkdir(converted_folder)
+        print(f"Exporting to {converted_folder}")
 
         for file_name in os.listdir(self.folder_path):
             if not file_name.endswith('.txt'):
