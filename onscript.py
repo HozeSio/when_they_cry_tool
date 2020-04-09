@@ -42,7 +42,8 @@ class OnscriptParser:
 class SteamParser:
     HEADER = ('japanese', 'english', 'korean')
     parse_pattern = re.compile(r"^lang.*$", re.VERBOSE | re.MULTILINE)
-    text_pattern_jp = re.compile(r"(![ds]+\d*)?([^@/\\]*)[@/\\]", re.MULTILINE)
+    text_pattern_jp = re.compile(r"(![ds]+\d*)?([^@/\\]*)[@/\\]")
+    text_pattern_en = re.compile(r"[^^]*\^([^^]*)\^?.*")
 
     def __init__(self, text):
         self.text = text
@@ -55,11 +56,18 @@ class SteamParser:
             match_text = match.group()
             param = match_text[6:]
             params = param.split(':')
-            sentences = (p.replace('', '') for p in params if p.endswith(('@', '\\', '/')))
+            sentences = list(p.replace('', '') for p in params if p.endswith(('@', '\\', '/')))
             if match_text.startswith('langjp'):
-                sentences_jp.extend(sentences)
+                for sentence in sentences:
+                    if not sentence.startswith('dwave'):
+                        match = self.text_pattern_jp.match(sentence)
+                        if match:
+                            sentences_jp.append(match.group(2))
             else:
-                sentences_en.extend(sentences)
+                for sentence in sentences:
+                    match = self.text_pattern_en.match(sentence)
+                    if match:
+                        sentences_en.append(match.group(1))
 
         sentences = []
         if len(sentences_jp) != len(sentences_en):
