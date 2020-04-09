@@ -42,7 +42,7 @@ class OnscriptParser:
 class SteamParser:
     HEADER = ('japanese', 'english', 'korean')
     parse_pattern = re.compile(r"^lang.*$", re.VERBOSE | re.MULTILINE)
-    text_pattern_jp = re.compile(r"(![ds]+\d*)?([^@/\\]*)[@/\\]")
+    text_pattern_split = re.compile(r"(![ds]+\d*)?([^@/\\]*)[@/\\]")
     text_pattern_en = re.compile(r"[^^]*\^([^^]*)\^?.*")
 
     def __init__(self, text):
@@ -73,7 +73,7 @@ class SteamParser:
         for match in self.parse_pattern.finditer(self.text):
             match_text = match.group()
             param = match_text[6:]
-            params = param.split(':') if param[0] == ':' else (param,)
+            params = param.split(':') if param[0] == ':' or param.find('dwave_') != -1 else (param,)
             sentences = list(p.replace('', '') for p in params if p.endswith(('@', '\\', '/')))
             if match_text.startswith('langjp'):
                 if current_lang != 'jp':
@@ -82,16 +82,19 @@ class SteamParser:
                     rows.extend(self.save_text_block(sentences_jp, sentences_en))
                     sentences_jp.clear()
                     sentences_en.clear()
+
                 for sentence in sentences:
-                    match = self.text_pattern_jp.match(sentence)
-                    if match and match.group(2):
-                        sentences_jp.append(match.group(2))
+                    for sub_match in self.text_pattern_split.finditer(sentence):
+                        if sub_match and sub_match.group(2):
+                            sentences_jp.append(sub_match.group(2))
             else:
                 current_lang = 'en'
                 for sentence in sentences:
-                    match = self.text_pattern_en.match(sentence)
-                    if match:
-                        sentences_en.append(match.group(1))
+                    for sub_match in self.text_pattern_split.finditer(sentence):
+                        if sub_match and sub_match.group(2):
+                            match = self.text_pattern_en.match(sub_match.group(2))
+                            if match:
+                                sentences_en.append(match.group(1))
 
         rows.extend(self.save_text_block(sentences_jp, sentences_en))
         return rows
