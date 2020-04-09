@@ -48,41 +48,53 @@ class SteamParser:
     def __init__(self, text):
         self.text = text
 
-    def parse_text(self):
-        sentences_jp = []
-        sentences_en = []
-
-        for match in self.parse_pattern.finditer(self.text):
-            match_text = match.group()
-            param = match_text[6:]
-            params = param.split(':')
-            sentences = list(p.replace('', '') for p in params if p.endswith(('@', '\\', '/')))
-            if match_text.startswith('langjp'):
-                for sentence in sentences:
-                    match = self.text_pattern_jp.match(sentence)
-                    if match and match.group(2):
-                        sentences_jp.append(match.group(2))
-            else:
-                for sentence in sentences:
-                    match = self.text_pattern_en.match(sentence)
-                    if match:
-                        sentences_en.append(match.group(1))
-
-        sentences = []
-        if len(sentences_jp) != len(sentences_en):
-            print(f"Sentence count missmatch!!")
-
+    def save_text_block(self, sentences_jp, sentences_en):
+        rows = []
         for i in range(0, max(len(sentences_en), len(sentences_jp))):
             jp = None
             en = None
             try:
                 jp = sentences_jp[i]
-                en = sentences_en[i]
             except IndexError:
                 jp = None if not jp else jp
+            try:
+                en = sentences_en[i]
+            except IndexError:
                 en = None if not en else en
-            sentences.append((jp, en))
-        return sentences
+            rows.append((jp, en))
+        return rows
+
+    def parse_text(self):
+        sentences_jp = []
+        sentences_en = []
+        rows = []
+        current_lang = 'jp'
+
+        for match in self.parse_pattern.finditer(self.text):
+            match_text = match.group()
+            param = match_text[6:]
+            params = param.split(':') if param[0] == ':' else (param,)
+            sentences = list(p.replace('', '') for p in params if p.endswith(('@', '\\', '/')))
+            if match_text.startswith('langjp'):
+                if current_lang != 'jp':
+                    current_lang = 'jp'
+                    # save previous text block
+                    rows.extend(self.save_text_block(sentences_jp, sentences_en))
+                    sentences_jp.clear()
+                    sentences_en.clear()
+                for sentence in sentences:
+                    match = self.text_pattern_jp.match(sentence)
+                    if match and match.group(2):
+                        sentences_jp.append(match.group(2))
+            else:
+                current_lang = 'en'
+                for sentence in sentences:
+                    match = self.text_pattern_en.match(sentence)
+                    if match:
+                        sentences_en.append(match.group(1))
+
+        rows.extend(self.save_text_block(sentences_jp, sentences_en))
+        return rows
 
 
 class FolderParser:
