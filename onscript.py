@@ -59,10 +59,9 @@ class SteamParser:
             sentences = list(p.replace('', '') for p in params if p.endswith(('@', '\\', '/')))
             if match_text.startswith('langjp'):
                 for sentence in sentences:
-                    if not sentence.startswith('dwave'):
-                        match = self.text_pattern_jp.match(sentence)
-                        if match:
-                            sentences_jp.append(match.group(2))
+                    match = self.text_pattern_jp.match(sentence)
+                    if match and match.group(2):
+                        sentences_jp.append(match.group(2))
             else:
                 for sentence in sentences:
                     match = self.text_pattern_en.match(sentence)
