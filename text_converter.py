@@ -207,7 +207,11 @@ class TextConverter:
         if match_obj.group().startswith(play_bgm_method):
             groups = list(match_obj.groups())
             key = f"{self.index}_{play_bgm_method}"
-            groups[14] = f"\"{self.translation[key]}\""
+            try:
+                groups[14] = f"\"{self.translation[key]}\""
+            except KeyError:
+                print("BGM not found...(ignore if xlsx is old version)")
+                return match_obj.group()
             self.index += 1
             return ''.join(groups[11:20])
 
