@@ -240,8 +240,8 @@ class TextConverter:
                 key = None
             translated_text = self.translation[key]
             if translated_text:
-                if len(translated_text.rstrip()) > 1:
-                    translated_text = f"{translated_text.rstrip()} "
+                if len(translated_text.strip()) > 1:
+                    translated_text = f"{translated_text.strip()} "
                 translated_text = translated_text.translate(full_to_half_ascii)
                 translated_text = translated_text.translate(custom_map)
                 translated_text = translated_text.replace('&', ' & ')
