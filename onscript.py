@@ -43,7 +43,7 @@ class SteamParser:
     HEADER = ('japanese', 'english', 'korean')
     parse_pattern = re.compile(r"^lang.*$", re.VERBOSE | re.MULTILINE)
     text_pattern_split = re.compile(r"(![ds]+\d*)?([^@/\\]*)[@/\\]")
-    text_pattern_en = re.compile(r"[^^]*\^([^^]*)\^?.*")
+    text_pattern_en = re.compile(r"[^^]*\^([^^]*)\^?")
 
     def __init__(self, text):
         self.text = text
@@ -92,9 +92,9 @@ class SteamParser:
                 for sentence in sentences:
                     for sub_match in self.text_pattern_split.finditer(sentence):
                         if sub_match and sub_match.group(2):
-                            match = self.text_pattern_en.match(sub_match.group(2))
-                            if match:
-                                sentences_en.append(match.group(1))
+                            for sub_sub_match in self.text_pattern_en.finditer(sub_match.group(2)):
+                                if sub_sub_match:
+                                    sentences_en.append(sub_sub_match.group(1))
 
         rows.extend(self.save_text_block(sentences_jp, sentences_en))
         return rows
