@@ -301,6 +301,6 @@ class TextConverter:
             en_actors = line.get_actors(line.param3)
             longest = max(len(jp_actors), len(en_actors))
             for index in range(0, longest):
-                actors.add((jp_actors[index] if len(jp_actors) > index else None,
-                            en_actors[index] if len(en_actors) > index else None))
+                actors.add((jp_actors[index] if len(jp_actors) > index else '',
+                            en_actors[index] if len(en_actors) > index else ''))
         return actors
