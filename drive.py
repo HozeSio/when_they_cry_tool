@@ -31,6 +31,7 @@ def get_files(service, folderId, files, filter_folder_name):
                 mimeType = child['mimeType']
                 if mimeType == 'application/vnd.google-apps.folder':
                     sub_folder_name = child['name']
+                    print(f"searching {sub_folder_name}")
                     if filter_folder_name and sub_folder_name != filter_folder_name:
                         continue
                     files[sub_folder_name] = {}
