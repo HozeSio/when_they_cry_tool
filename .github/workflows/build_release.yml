@@ -9,16 +9,19 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [ubuntu-18.04, windows-2019]
-        artifact: [converter, converter.exe]
-        
-    name: Build on  ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    runs-on: [ubuntu-18.04, windows-2019]
+    name: Build on  ${{ runner.os }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2      
+      
+    - run: |
+        if [ $runner.os == 'windows' ]; then
+          artifact-name=converter.exe
+        else
+          artifact-name=converter
+        fi
+        echo ::set-env name=artifact-name::${artifact-name}
       
     - name: Set up Python 3.8
       uses: actions/setup-python@v1
@@ -50,6 +53,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: ./dist/${{ matrix.artifact }}
-        asset_name: ${{ matrix.artifact }}
+        asset_path: ./dist/${{ env.artifact-name }}
+        asset_name: ${{ env.artifact-name }}
         asset_content_type: application/octet-stream
