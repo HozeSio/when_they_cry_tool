@@ -42,7 +42,7 @@ class OnscriptParser:
 class SteamParser:
     HEADER = ('japanese', 'english', 'korean')
     parse_pattern = re.compile(r"^lang.*$", re.VERBOSE | re.MULTILINE)
-    text_pattern_split = re.compile(r"(![ds]+\d*)?([^@/\\]*)[@/\\]")
+    text_pattern_split = re.compile(r"(\s*![ds]+\d*)?([^@/\\]*)[@/\\]?")
     text_pattern_en = re.compile(r"[^^]*\^([^^]*)\^?")
 
     def __init__(self, text):
@@ -73,8 +73,8 @@ class SteamParser:
         for match in self.parse_pattern.finditer(self.text):
             match_text = match.group()
             param = match_text[6:]
-            params = param.split(':') if param[0] == ':' or param.find('dwave_') != -1 else (param,)
-            sentences = list(p.replace('', '') for p in params if p.endswith(('@', '\\', '/')))
+            if not param:
+                continue
             if match_text.startswith('langjp'):
                 if current_lang != 'jp':
                     current_lang = 'jp'
@@ -83,18 +83,16 @@ class SteamParser:
                     sentences_jp.clear()
                     sentences_en.clear()
 
+                params = param.split(':') if param[0] == ':' or param.find('dwave_') != -1 else (param,)
+                sentences = list(p.replace('', '') for p in params if not p.startswith('dwave'))
                 for sentence in sentences:
                     for sub_match in self.text_pattern_split.finditer(sentence):
-                        if sub_match and sub_match.group(2):
+                        if sub_match.group(2):
                             sentences_jp.append(sub_match.group(2))
             else:
                 current_lang = 'en'
-                for sentence in sentences:
-                    for sub_match in self.text_pattern_split.finditer(sentence):
-                        if sub_match and sub_match.group(2):
-                            for sub_sub_match in self.text_pattern_en.finditer(sub_match.group(2)):
-                                if sub_sub_match:
-                                    sentences_en.append(sub_sub_match.group(1))
+                for sub_match in self.text_pattern_en.finditer(param):
+                    sentences_en.append(sub_match.group(1))
 
         rows.extend(self.save_text_block(sentences_jp, sentences_en))
         return rows
