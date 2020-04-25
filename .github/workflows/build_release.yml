@@ -24,11 +24,10 @@ jobs:
         RUNNER_OS: ${{ runner.os }}
       run: |
         if [ $RUNNER_OS == 'Windows' ]; then
-          let artifact-name='converter.exe'
+          echo ::set-env name=artifact-name::converter.exe
         else
-          let artifact-name='converter'
+          echo ::set-env name=artifact-name::converter
         fi
-        echo ::set-env name=artifact-name::${artifact-name}
       
     - name: Set up Python 3.8
       uses: actions/setup-python@v1
