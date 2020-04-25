@@ -19,13 +19,14 @@ jobs:
     - uses: actions/checkout@v2
     
     - name: Initialize environment
+      shell: bash
       env:
         RUNNER_OS: ${{ runner.os }}
       run: |
         if [ $RUNNER_OS == 'Windows' ]; then
-          artifact-name=converter.exe
+          artifact-name="converter.exe"
         else
-          artifact-name=converter
+          artifact-name="converter"
         fi
         echo ::set-env name=artifact-name::${artifact-name}
       
