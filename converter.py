@@ -330,7 +330,7 @@ available commands:
         converter.export_text('xlsx')
     elif sys.argv[1] == 'replace_text':
         converter = FolderConverter(sys.argv[2])
-        converter.replace_text(sys.argv[3], 'actor.xlsx')
+        converter.replace_text(sys.argv[3], sys.argv[4] if len(sys.argv) >= 5 else 'actor.xlsx')
     elif sys.argv[1] == 'validate_folder':
         validate_folder(sys.argv[2])
     elif sys.argv[1] == 'extract_text':
