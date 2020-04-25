@@ -24,9 +24,9 @@ jobs:
         RUNNER_OS: ${{ runner.os }}
       run: |
         if [ $RUNNER_OS == 'Windows' ]; then
-          let artifact-name="converter.exe"
+          let artifact-name='converter.exe'
         else
-          let artifact-name="converter"
+          let artifact-name='converter'
         fi
         echo ::set-env name=artifact-name::${artifact-name}
       
