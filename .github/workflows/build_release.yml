@@ -16,10 +16,12 @@ jobs:
     name: Build on ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v2      
-      
+    - uses: actions/checkout@v2
+    
+    - env:
+        RUNNER_OS: ${{ runner.os }}
     - run: |
-        if [ $runner.os == 'windows' ]; then
+        if [ $RUNNER_OS == 'Windows' ]; then
           artifact-name=converter.exe
         else
           artifact-name=converter
