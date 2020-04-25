@@ -45,5 +45,7 @@ jobs:
     - name: Update Release
       uses: ncipollo/release-action@v1
       with:
+        allowUpdates: true
+        replacesArtifacts: false
         artifacts: ./dist/${{ env.artifact-name }}
         token: ${{ secrets.GITHUB_TOKEN }}
