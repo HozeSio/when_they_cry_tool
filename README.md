@@ -6,10 +6,10 @@ usage: converter.py [commands]
 available commands:  
 * export_text \<Update folder>   
     > export text parameter to xlsx file from the script  
-* replace_text \<Update folder> <translation folder>  
+* replace_text \<Update folder> \<translation folder> \<actor path:optional>  
     > Replace english text to translated text      
-* combine_xlsx \<original_folder> <translated_folder>  
-* insert_actor_column \<old_folder> <actor_folder>  
+* combine_xlsx \<original_folder> \<translated_folder>  
+* insert_actor_column \<old_folder> \<actor_folder>  
 * unique_characters \<Update folder>  
 * export_text_onscript \<folder path>  
     > export text from onscript file  
