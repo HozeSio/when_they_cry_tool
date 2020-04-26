@@ -1,7 +1,6 @@
 import translation_extractor
 from folder_converter import *
 import text_converter
-import drive
 import openpyxl
 import urllib.request
 import urllib.parse
@@ -348,10 +347,6 @@ available commands:
         insert_new_rows(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == 'get_actors':
         get_actors(sys.argv[2], sys.argv[3] if len(sys.argv) >= 4 else None)
-    elif sys.argv[1] == 'download':
-        drive.download_drive(f"{os.path.pardir}{os.path.sep}Drive", sys.argv[2] if len(sys.argv) >= 3 else None)
-    elif sys.argv[1] == 'upload':
-        drive.upload_drive(f"{os.path.pardir}{os.path.sep}Drive", sys.argv[2] if len(sys.argv) >= 3 else None)
     elif sys.argv[1] == 'insert_papago':
         insert_papago(sys.argv[2])
     elif sys.argv[1] == 'unique_characters':

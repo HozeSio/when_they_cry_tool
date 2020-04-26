@@ -154,3 +154,10 @@ def upload_drive(local_folder, filter_folder_name=None):
     get_files(drive_service, TRANSLATION_FOLDER_ID, root, filter_folder_name)
 
     upload_folder(drive_service, root, local_folder)
+
+
+if __name__ == '__main__':
+    if sys.argv[1] == 'download':
+        download_drive(f"{os.path.pardir}{os.path.sep}Drive", sys.argv[2] if len(sys.argv) >= 3 else None)
+    elif sys.argv[1] == 'upload':
+        upload_drive(f"{os.path.pardir}{os.path.sep}Drive", sys.argv[2] if len(sys.argv) >= 3 else None)
