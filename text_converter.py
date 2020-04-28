@@ -246,7 +246,9 @@ class TextConverter:
                 translated_text = translated_text.translate(custom_map)
                 translated_text = translated_text.replace('&', ' & ')
         except KeyError:
-            print(line.text)
+            print('Found text inconsistency between txt and xlsx at ')
+            print(list(self.translation.keys())[self.index])
+            print(clean_param)
             raise
         line.param4 = f'\"{translated_text}\"'
         return line.text
