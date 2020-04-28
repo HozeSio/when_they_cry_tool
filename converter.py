@@ -7,6 +7,7 @@ import urllib.parse
 import settings
 import json
 import onscript
+import ui
 
 
 def validate_folder(folder_path: str):
@@ -185,7 +186,9 @@ def get_actors(folder, filter_folder):
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    for actor in actors:
+    actors_list = list(actors)
+    actors_list.sort()
+    for actor in actors_list:
         ws.append(actor)
     wb.save('actor_raw.xlsx')
     wb.close()
@@ -308,8 +311,11 @@ def find_old_format(folder_path):
                 print(f"{os.path.join(chapter, file)} has deprecated format")
 
 
-if __name__ == '__main__':
-    if len(sys.argv) == 1 or sys.argv[1] == 'help':
+def convert(argv):
+    if len(argv) == 1:
+        print('Starting GUI...')
+        ui.initializeUI()
+    elif argv[1] == 'help':
         print(
 """\
 usage: converter.py [commands]
@@ -324,39 +330,43 @@ available commands:
     insert_actor_column <old_folder> <actor_folder>
 """
         )
-    elif sys.argv[1] == 'export_text':
-        converter = FolderConverter(sys.argv[2])
+    elif argv[1] == 'export_text':
+        converter = FolderConverter(argv[2])
         converter.export_text('xlsx')
-    elif sys.argv[1] == 'replace_text':
-        converter = FolderConverter(sys.argv[2])
-        converter.replace_text(sys.argv[3], sys.argv[4] if len(sys.argv) >= 5 else 'actor.xlsx')
-    elif sys.argv[1] == 'validate_folder':
-        validate_folder(sys.argv[2])
-    elif sys.argv[1] == 'extract_text':
+    elif argv[1] == 'replace_text':
+        converter = FolderConverter(argv[2])
+        converter.replace_text(argv[3], argv[4] if len(argv) >= 5 else 'actor.xlsx')
+    elif argv[1] == 'validate_folder':
+        validate_folder(argv[2])
+    elif argv[1] == 'extract_text':
         extractor = translation_extractor.TextExtractor()
-        extractor.extract_text(sys.argv[2])
-    elif sys.argv[1] == 'combine_xlsx':
-        combine_xlsx(sys.argv[2], sys.argv[3])
-    elif sys.argv[1] == 'insert_actor_column':
-        insert_actor_column(sys.argv[2], sys.argv[3])
-    elif sys.argv[1] == 'remove_key_column':
-        remove_key_column(sys.argv[2])
-    elif sys.argv[1] == 'compare_line_count':
-        compare_line_count(sys.argv[2], sys.argv[3])
-    elif sys.argv[1] == 'insert_new_rows':
-        insert_new_rows(sys.argv[2], sys.argv[3])
-    elif sys.argv[1] == 'get_actors':
-        get_actors(sys.argv[2], sys.argv[3] if len(sys.argv) >= 4 else None)
-    elif sys.argv[1] == 'insert_papago':
-        insert_papago(sys.argv[2])
-    elif sys.argv[1] == 'unique_characters':
-        unique_characters(sys.argv[2])
-    elif sys.argv[1] == 'find_old_format':
-        find_old_format(sys.argv[2])
-    elif sys.argv[1] == 'export_text_onscript':
-        onscript.FolderParser(sys.argv[2]).export_text(mode='onscript')
-    elif sys.argv[1] == 'export_text_steam':
-        onscript.FolderParser(sys.argv[2]).export_text()
+        extractor.extract_text(argv[2])
+    elif argv[1] == 'combine_xlsx':
+        combine_xlsx(argv[2], argv[3])
+    elif argv[1] == 'insert_actor_column':
+        insert_actor_column(argv[2], argv[3])
+    elif argv[1] == 'remove_key_column':
+        remove_key_column(argv[2])
+    elif argv[1] == 'compare_line_count':
+        compare_line_count(argv[2], argv[3])
+    elif argv[1] == 'insert_new_rows':
+        insert_new_rows(argv[2], argv[3])
+    elif argv[1] == 'get_actors':
+        get_actors(argv[2], argv[3] if len(argv) >= 4 else None)
+    elif argv[1] == 'insert_papago':
+        insert_papago(argv[2])
+    elif argv[1] == 'unique_characters':
+        unique_characters(argv[2])
+    elif argv[1] == 'find_old_format':
+        find_old_format(argv[2])
+    elif argv[1] == 'export_text_onscript':
+        onscript.FolderParser(argv[2]).export_text(mode='onscript')
+    elif argv[1] == 'export_text_steam':
+        onscript.FolderParser(argv[2]).export_text()
     else:
         print("invalid command", file=sys.stderr)
         exit(-1)
+
+
+if __name__ == '__main__':
+    convert(sys.argv)
