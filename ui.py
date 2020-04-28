@@ -88,9 +88,8 @@ class Ui_Dialog(object):
         self.reDrawCommand(commands[text])
 
     def _open_file_dialog(self, lineEdit):
-        result = str(QtWidgets.QFileDialog.getOpenFileName())
-        path = str(result[0]).strip("['']")
-        lineEdit.setText(path)
+        result = QtWidgets.QFileDialog.getOpenFileName()
+        lineEdit.setText(result[0])
 
     def _open_folder_dialog(self, lineEdit):
         result = str(QtWidgets.QFileDialog.getExistingDirectory())
