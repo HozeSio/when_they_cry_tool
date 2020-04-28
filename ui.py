@@ -88,23 +88,12 @@ class Ui_Dialog(object):
         self.reDrawCommand(commands[text])
 
     def _open_file_dialog(self, lineEdit):
-        result = str(QtWidgets.QFileDialog.getExistingDirectory())
+        result = str(QtWidgets.QFileDialog.getOpenFileName())
         lineEdit.setText(result)
 
-    def _open_file_dialog2(self):
+    def _open_folder_dialog(self, lineEdit):
         result = str(QtWidgets.QFileDialog.getExistingDirectory())
-        self.lineEdit_2.setText(result);
-        #print(result)
-        return result
-    
-    def pushButtonClicked(self):
-        fname = QtWidgets.QFileDialog.getOpenFileNames()
-        path = str(fname[0]).strip("['']")
-        self.lineEdit_3.setText(path)
-        return fname
-
-    def ex(self):
-        print(self.comboBox.currentText() +" "+ self.lineEdit.text())
+        lineEdit.setText(result)
     
     def ex1(self):
         argv = ['ui', self.selectedCommand]
@@ -168,7 +157,7 @@ class Ui_Dialog(object):
             toolButton = QtWidgets.QToolButton(frame)
             toolButton.setGeometry(QtCore.QRect(230, 30 + 50 * idx, 61, 20))
             #self.toolButton.setObjectName("toolButton")
-            toolButton.clicked.connect(lambda: self._open_file_dialog(lineEdit))
+            toolButton.clicked.connect(lambda: self._open_file_dialog(lineEdit) if argv['type'] == 'file' else self._open_folder_dialog())
             toolButton.setText('경로')
 
         if command:
