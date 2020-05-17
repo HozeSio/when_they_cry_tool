@@ -233,7 +233,8 @@ class TextConverter:
             clean_param = strip_quotation_mark(line.param2)
             if not clean_param:
                 clean_param = None
-            key = f"{self.index}_{clean_param}"
+            half_param = clean_param.translate(full_to_half_ascii).translate(custom_map)
+            key = f"{self.index}_{half_param}"
             self.index += 1
             # empty text handling
             if not key:

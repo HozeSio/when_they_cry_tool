@@ -151,11 +151,15 @@ class FolderConverter:
             file_path = os.path.join(translation_folder, file_name)
             # deprecated
             if ext == '.tsv':
-                translation.update(self.load_tsv(file_path))
+                full_translation = self.load_tsv(file_path)
             elif ext == '.xlsx':
-                translation.update(self.load_xlsx(file_path))
+                full_translation = self.load_xlsx(file_path)
             else:
                 raise ModuleNotFoundError
+            half_translation = dict()
+            for pair in full_translation.items():
+                half_translation[pair[0].translate(full_to_half_ascii).translate(custom_map)] = pair[1]
+            translation.update(half_translation)
 
             with open(script_path, 'r', encoding='utf-8') as f:
                 text_converter = TextConverter(f.read())
