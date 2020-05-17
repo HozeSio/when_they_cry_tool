@@ -210,7 +210,7 @@ class TextConverter:
             try:
                 groups[14] = f"\"{self.translation[key]}\""
             except KeyError:
-                print("BGM not found...(ignore if xlsx is old version)")
+                # print("BGM not found...(ignore if xlsx is old version)")
                 return match_obj.group()
             self.index += 1
             return ''.join(groups[11:20])
@@ -247,9 +247,12 @@ class TextConverter:
                 translated_text = translated_text.translate(custom_map)
                 translated_text = translated_text.replace('&', ' & ')
         except KeyError:
-            print('Found text inconsistency between txt and xlsx at ')
-            print(list(self.translation.keys())[self.index])
-            print(clean_param)
+            print(f'Found text inconsistency between txt and xlsx, row at xlsx is {self.index+1}')
+            print(f"txt : {key}")
+            for k in self.translation.keys():
+                if str(k).startswith(str(self.index-1)):
+                    print(f"xlsx: {k}")
+                    break
             raise
         line.param4 = f'\"{translated_text}\"'
         return line.text

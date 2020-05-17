@@ -138,6 +138,7 @@ class FolderConverter:
         translation_base = self.load_actor_translation(actor_path)
         translation_base[None] = ''
 
+        failed = False
         translation_folder = os.path.normpath(translation_folder)
         for file_name in os.listdir(translation_folder):
             (file_name_only, ext) = os.path.splitext(file_name)
@@ -165,8 +166,11 @@ class FolderConverter:
                 text_converter = TextConverter(f.read())
                 replaced_text = text_converter.replace_text(translation)
                 if not TextConverter(replaced_text).validate_text():
-                    sys.exit(-1)
+                    failed = True
                 with open(os.path.join(replaced_folder, script_file_name), 'w', encoding='utf-8') as o:
                     o.write(replaced_text)
 
-            print('finished')
+            print(f'{script_file_name} finished')
+        if failed:
+            print("replace finished with validation error!!!")
+            sys.exit(-1)
