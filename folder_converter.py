@@ -43,13 +43,6 @@ class FolderConverter:
                 for col in ws.iter_cols(min_row=row_index, max_row=row_index):
                     for cell in col:
                         cell.fill = PatternFill(patternType='solid', fgColor='B7E3FF')
-
-        for col in ws.iter_cols(min_col=4, max_col=4, min_row=2):
-            for cell in col:
-                cell.protection = Protection(locked=False)
-        for col in ws.iter_cols(min_col=6, max_col=6, min_row=2):
-            for cell in col:
-                cell.protection = Protection(locked=False)
         wb.save(path)
         wb.close()
 
