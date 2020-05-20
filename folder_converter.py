@@ -31,7 +31,6 @@ class FolderConverter:
     def save_xlsx(self, sentences, path):
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.protection.enable()
         ws.append(HEADER_ROW)
         for row_index, sentence in enumerate(sentences, 2):
             ws.append(sentence)
