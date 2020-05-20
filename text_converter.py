@@ -77,7 +77,7 @@ repl_pattern = re.compile(rf"""(?:
 
 actor_pattern = re.compile(r'<color=[^>]*>([^<]*)</color>')
 remove_quotation_mark_pattern = re.compile(r'"(.*)"')
-font_size_pattern = re.compile(r'<size=-?\d*>(.*)')
+font_size_pattern = re.compile(r'\"<size=-?\d*>(.*)\"')
 
 
 full_to_half_ascii = dict((i + 0xFEE0, i) for i in range(0x21, 0x7F))
