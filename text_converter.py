@@ -77,6 +77,7 @@ repl_pattern = re.compile(rf"""(?:
 
 actor_pattern = re.compile(r'<color=[^>]*>([^<]*)</color>')
 remove_quotation_mark_pattern = re.compile(r'"(.*)"')
+font_size_pattern = re.compile(r'<size=-?\d*>(.*)')
 
 
 full_to_half_ascii = dict((i + 0xFEE0, i) for i in range(0x21, 0x7F))
@@ -150,7 +151,14 @@ class OutputLine:
         return ''.join(self.groups[:11])
 
     def is_ignore_line(self):
-        return self.param2.startswith('\"<size=') or self.param4.startswith('\"<size=')
+        # ignore font size command
+        m1 = font_size_pattern.match(self.param2)
+        if m1 and not m1.group(1):
+            return True
+        m2 = font_size_pattern.match(self.param4)
+        if m2 and not m2.group(1):
+            return True
+        return False
 
     def is_actor_line(self):
         return self.param2 == 'NULL' and self.param4 == 'NULL'
