@@ -113,20 +113,20 @@ class SteamParser:
     def replace_text_int(self, match) -> str:
         match_text = match.group()
         param = match_text[6:]
-        if not param or not match_text.startswith('langjp'):
+        if not param or not match_text.startswith('langen'):
             return match_text
 
         sentences = self.get_sentences(match_text)
         for sentence in sentences:
             found = False
             for i in range(self.index, len(self.translation)):
-                if sentence == self.translation[i][0]:
+                if sentence == self.translation[i][1]:
                     found = True
                     self.index = i + 1
                     match_text = match_text.replace(sentence, self.translation[i][2] or '')
                     break
             if not found:
-                print(f"Expected translation at row {self.index} but couldn't find translation for {sentence}")
+                print(f"\nExpected translation at row {self.index + 1} but couldn't find translation for {sentence}")
                 raise Exception('Translation not found Exception')
         return match_text
 
