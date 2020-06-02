@@ -47,6 +47,8 @@ class SteamParser:
 
     def __init__(self, text):
         self.text = text
+        self.translation = {}
+        self.index = 0
 
     def save_text_block(self, sentences_jp, sentences_en):
         rows = []
@@ -63,6 +65,23 @@ class SteamParser:
                 en = None if not en else en
             rows.append((jp, en))
         return rows
+
+    def get_sentences(self, lang_text):
+        param = lang_text[6:]
+        if not param:
+            return []
+        if lang_text.startswith('langjp'):
+            params = param.split(':') if param[0] == ':' or param.find('dwave_') != -1 else (param,)
+            sentences = list(p.replace('', '') for p in params if not p.startswith('dwave'))
+            for sentence in sentences:
+                for sub_match in self.text_pattern_split.finditer(sentence):
+                    if sub_match.group(2):
+                        yield sub_match.group(2)
+        elif lang_text.startswith('langen'):
+            for sub_match in self.text_pattern_en.finditer(param):
+                yield sub_match.group(1)
+        else:
+            raise NotImplementedError()
 
     def parse_text(self):
         sentences_jp = []
@@ -83,19 +102,38 @@ class SteamParser:
                     sentences_jp.clear()
                     sentences_en.clear()
 
-                params = param.split(':') if param[0] == ':' or param.find('dwave_') != -1 else (param,)
-                sentences = list(p.replace('', '') for p in params if not p.startswith('dwave'))
-                for sentence in sentences:
-                    for sub_match in self.text_pattern_split.finditer(sentence):
-                        if sub_match.group(2):
-                            sentences_jp.append(sub_match.group(2))
+                sentences_jp.append(self.get_sentences(match_text))
             else:
                 current_lang = 'en'
-                for sub_match in self.text_pattern_en.finditer(param):
-                    sentences_en.append(sub_match.group(1))
+                sentences_en.append(self.get_sentences(match_text))
 
         rows.extend(self.save_text_block(sentences_jp, sentences_en))
         return rows
+
+    def replace_text_int(self, match) -> str:
+        match_text = match.group()
+        param = match_text[6:]
+        if not param or not match_text.startswith('langjp'):
+            return match_text
+
+        sentences = self.get_sentences(match_text)
+        for sentence in sentences:
+            found = False
+            for i in range(self.index, len(self.translation)):
+                if sentence == self.translation[i][0]:
+                    found = True
+                    self.index = i + 1
+                    match_text = match_text.replace(sentence, self.translation[i][2] or '')
+                    break
+            if not found:
+                print(f"Expected translation at row {self.index} but couldn't find translation for {sentence}")
+                raise Exception('Translation not found Exception')
+        return match_text
+
+    def replace_text(self, translation):
+        self.translation = translation
+        self.index = 0
+        return self.parse_pattern.sub(self.replace_text_int, self.text)
 
 
 class FolderParser:
@@ -131,3 +169,37 @@ class FolderParser:
             ws.append(sentence)
         wb.save(path)
         wb.close()
+
+    def load_xlsx(self, path):
+        wb = openpyxl.load_workbook(path)
+        ws = wb.active
+        translation = []
+        for row in ws.rows:
+            translation.append((row[0].value, row[1].value, row[2].value))
+        wb.close()
+        return translation
+
+    def replace_text(self, translation_folder):
+        replaced_folder = os.path.join(self.folder_directory, self.folder_name + '_translated')
+        if not os.path.exists(replaced_folder):
+            os.mkdir(replaced_folder)
+
+        translation_folder = os.path.normpath(translation_folder)
+        for file_name in os.listdir(translation_folder):
+            (file_name_only, ext) = os.path.splitext(file_name)
+            script_file_name = f'{file_name_only}.txt'
+            script_path = os.path.join(self.folder_path, script_file_name)
+            if not os.path.exists(script_path):
+                continue
+
+            print(f'start translating {script_file_name}....', end='')
+            file_path = os.path.join(translation_folder, file_name)
+            translation = self.load_xlsx(file_path)
+
+            with open(script_path, 'r', encoding='utf-8') as f:
+                text_converter = SteamParser(f.read())
+                replaced_text = text_converter.replace_text(translation)
+                with open(os.path.join(replaced_folder, script_file_name), 'w', encoding='utf-8') as o:
+                    o.write(replaced_text)
+
+            print(f'{script_file_name} finished')

@@ -23,6 +23,22 @@ commands = {
             'type': 'file',
         }
     ],
+    "export_text_steam": [
+        {
+            'text': 'txt folder',
+            'type': 'folder',
+        }
+    ],
+    "replace_text_steam": [
+        {
+            'text': 'txt folder',
+            'type': 'folder',
+        },
+        {
+            'text': 'Translation xlsx folder',
+            'type': 'folder',
+        },
+    ],
     "validate_folder": [
 
     ],
@@ -63,9 +79,6 @@ commands = {
 
     ],
     "export_text_onscript": [
-
-    ],
-    "export_text_steam": [
 
     ],
 }

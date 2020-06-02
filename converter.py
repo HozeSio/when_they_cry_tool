@@ -363,6 +363,8 @@ available commands:
         onscript.FolderParser(argv[2]).export_text(mode='onscript')
     elif argv[1] == 'export_text_steam':
         onscript.FolderParser(argv[2]).export_text()
+    elif argv[1] == 'replace_text_steam':
+        onscript.FolderParser(argv[2]).replace_text(argv[3])
     else:
         print("invalid command", file=sys.stderr)
         exit(-1)
