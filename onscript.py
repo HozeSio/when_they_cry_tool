@@ -70,18 +70,21 @@ class SteamParser:
         param = lang_text[6:]
         if not param:
             return []
+        result = []
         if lang_text.startswith('langjp'):
             params = param.split(':') if param[0] == ':' or param.find('dwave_') != -1 else (param,)
             sentences = list(p.replace('', '') for p in params if not p.startswith('dwave'))
             for sentence in sentences:
                 for sub_match in self.text_pattern_split.finditer(sentence):
                     if sub_match.group(2):
-                        yield sub_match.group(2)
+                        result.append(sub_match.group(2))
         elif lang_text.startswith('langen'):
+            param = param.replace('', '')
             for sub_match in self.text_pattern_en.finditer(param):
-                yield sub_match.group(1)
+                result.append(sub_match.group(1))
         else:
             raise NotImplementedError()
+        return result
 
     def parse_text(self):
         sentences_jp = []
@@ -102,10 +105,10 @@ class SteamParser:
                     sentences_jp.clear()
                     sentences_en.clear()
 
-                sentences_jp.append(self.get_sentences(match_text))
+                sentences_jp.extend(self.get_sentences(match_text))
             else:
                 current_lang = 'en'
-                sentences_en.append(self.get_sentences(match_text))
+                sentences_en.extend(self.get_sentences(match_text))
 
         rows.extend(self.save_text_block(sentences_jp, sentences_en))
         return rows
