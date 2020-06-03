@@ -48,4 +48,5 @@ jobs:
         allowUpdates: true
         replacesArtifacts: false
         artifacts: ./dist/${{ env.artifact-name }}
+        body: ${{ github.event.head_commit.message }}
         token: ${{ secrets.GITHUB_TOKEN }}
