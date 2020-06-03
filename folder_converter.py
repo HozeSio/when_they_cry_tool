@@ -122,7 +122,7 @@ class FolderConverter:
                     self.save_tsv(sentences, os.path.join(converted_folder, f'{file_name_only}.tsv'))
                 print(f"finished")
 
-    def replace_text(self, translation_folder, actor_path):
+    def replace_text(self, translation_folder, actor_path, use_bgm=False):
         replaced_folder = os.path.join(self.folder_directory, self.folder_name + '_replaced')
         if not os.path.exists(replaced_folder):
             os.mkdir(replaced_folder)
@@ -156,7 +156,7 @@ class FolderConverter:
 
             with open(script_path, 'r', encoding='utf-8') as f:
                 text_converter = TextConverter(f.read())
-                replaced_text = text_converter.replace_text(translation)
+                replaced_text = text_converter.replace_text(translation, use_bgm=use_bgm)
                 if not TextConverter(replaced_text).validate_text():
                     failed = True
                 with open(os.path.join(replaced_folder, script_file_name), 'w', encoding='utf-8') as o:

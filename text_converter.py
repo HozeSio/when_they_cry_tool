@@ -185,6 +185,7 @@ class TextConverter:
         self.translation = {}
         self.index = 0
         self.last_translated_text:str = None
+        self.use_bgm = False
 
     def extract_text(self):
         sentences = []
@@ -221,7 +222,10 @@ class TextConverter:
                 # print("BGM not found...(ignore if xlsx is old version)")
                 return match_obj.group()
             self.index += 1
-            return ''.join(groups[11:20])
+            if self.use_bgm:
+                return ''.join(groups[11:20])
+            else:
+                return match_obj.group()
 
         line = OutputLine(match_obj)
 
@@ -262,10 +266,11 @@ class TextConverter:
         line.param4 = f'\"{translated_text}\"'
         return line.text
 
-    def replace_text(self, translation: {}):
+    def replace_text(self, translation: {}, use_bgm=False):
         self.translation = translation
         self.index = 0
         self.last_translated_text = None
+        self.use_bgm = use_bgm
         return repl_pattern.sub(self.repl_replace_text, self.text)
 
     def validate_text(self):

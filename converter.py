@@ -336,6 +336,9 @@ available commands:
     elif argv[1] == 'replace_text':
         converter = FolderConverter(argv[2])
         converter.replace_text(argv[3], argv[4] if len(argv) >= 5 else 'actor.xlsx')
+    elif argv[1] == 'replace_text_with_bgm':
+        converter = FolderConverter(argv[2])
+        converter.replace_text(argv[3], argv[4] if len(argv) >= 5 else 'actor.xlsx', use_bgm=True)
     elif argv[1] == 'validate_folder':
         validate_folder(argv[2])
     elif argv[1] == 'extract_text':
