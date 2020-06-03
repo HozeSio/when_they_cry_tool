@@ -170,7 +170,7 @@ class Ui_Dialog(object):
             toolButton = QtWidgets.QToolButton(frame)
             toolButton.setGeometry(QtCore.QRect(230, 30 + 50 * idx, 61, 20))
             #self.toolButton.setObjectName("toolButton")
-            toolButton.clicked.connect(lambda: self._open_file_dialog(lineEdit) if argv['type'] == 'file' else self._open_folder_dialog())
+            toolButton.clicked.connect(lambda checked, le=lineEdit: self._open_file_dialog(le) if argv['type'] == 'file' else self._open_folder_dialog(le))
             toolButton.setText('경로')
 
         if command:
